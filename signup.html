@@ -281,39 +281,68 @@ body {
 
 <script src="config.js"></script>
 <script>
-// ── LOAD SETTINGS ──────────────────────────────────
-const settings = JSON.parse(localStorage.getItem('lc_settings') || '{}');
-const CAFE      = settings.cafeName  || 'Your Cafe';
-const ACCENT    = settings.accent    || '#c94f2b';
-const STAMP     = settings.stamp     || '☕';
-const MODE      = settings.mode      || 'dark';
+// ── SETTINGS ───────────────────────────────
+// Loaded from Supabase on page load.
+// Falls back to localStorage cache for instant paint.
+let CAFE   = 'Your Cafe';
+let ACCENT = '#c94f2b';
+let STAMP  = '☕';
+let MODE   = 'dark';
 
-// apply theme
-document.documentElement.style.setProperty('--accent', ACCENT);
-if (MODE === 'light') {
-  document.documentElement.style.setProperty('--ink',     '#f9f6f1');
-  document.documentElement.style.setProperty('--surface', '#ffffff');
-  document.documentElement.style.setProperty('--base',    '#f2ede6');
-  document.documentElement.style.setProperty('--paper',   '#1a1208');
-  document.documentElement.style.setProperty('--muted',   '#9a8878');
-  document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+function applyTheme() {
+  document.documentElement.style.setProperty('--accent', ACCENT);
+  if (MODE === 'light') {
+    document.documentElement.style.setProperty('--ink',     '#f9f6f1');
+    document.documentElement.style.setProperty('--surface', '#ffffff');
+    document.documentElement.style.setProperty('--base',    '#f2ede6');
+    document.documentElement.style.setProperty('--paper',   '#1a1208');
+    document.documentElement.style.setProperty('--muted',   '#9a8878');
+    document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+  }
+  document.getElementById('cafeEyebrow').textContent = `${CAFE.toLowerCase()} · loyalty`;
+  document.title = `${CAFE} — Loyalty Card`;
 }
 
-// cafe name
-document.getElementById('cafeEyebrow').textContent = `${CAFE.toLowerCase()} · loyalty`;
-document.title = `${CAFE} — Loyalty Card`;
-
-// stamp track
-const track = document.getElementById('stampTrack');
-for (let i = 0; i < 10; i++) {
-  const d = document.createElement('div');
-  d.className = 'st-dot';
-  track.appendChild(d);
+function buildStampTrack() {
+  const track = document.getElementById('stampTrack');
+  track.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const d = document.createElement('div');
+    d.className = 'st-dot';
+    track.appendChild(d);
+  }
+  const lbl = document.createElement('div');
+  lbl.className = 'st-label';
+  lbl.textContent = '10 stamps = free coffee';
+  track.appendChild(lbl);
 }
-const lbl = document.createElement('div');
-lbl.className = 'st-label';
-lbl.textContent = '10 stamps = free coffee';
-track.appendChild(lbl);
+
+// 1. Apply cached settings immediately (instant paint)
+(function applyCached() {
+  const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+  if (cached.cafeName) {
+    CAFE = cached.cafeName; ACCENT = cached.accent || ACCENT;
+    STAMP = cached.stamp || STAMP; MODE = cached.mode || MODE;
+  }
+  applyTheme();
+  buildStampTrack();
+})();
+
+// 2. Fetch fresh settings from Supabase and silently update
+(async function fetchSettings() {
+  try {
+    const s = await apiCall('get-settings', {});
+    CAFE = s.cafeName; ACCENT = s.accent; STAMP = s.stamp; MODE = s.mode;
+    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+    localStorage.setItem('lc_settings', JSON.stringify({
+      ...cached, cafeName: s.cafeName, accent: s.accent, stamp: s.stamp, mode: s.mode
+    }));
+    applyTheme();
+  } catch (e) {
+    console.warn('settings fetch failed, using cached:', e.message);
+  }
+})();
+
 
 // ── SIGN UP ────────────────────────────────────────
 async function doSignup() {
@@ -333,27 +362,10 @@ async function doSignup() {
   try {
     const id = genId();
 
-    const cafeSettings = { cafe_name: CAFE, accent: ACCENT };
-
-    // create pass
+    // single API call — server handles supabase + walletwallet
     setLoading('generating your wallet pass…');
-    const { blob, serial } = await createPass(
-      { id, name, stamps: 0 },
-      cafeSettings,
-    );
-
-    // save to supabase
-    setLoading('saving your membership…');
-    await createCustomer({
-      id,
-      name,
-      email: email || null,
-      serial_number: serial,
-      stamps: 0,
-      accent: ACCENT,
-      cafe_name: CAFE,
-      mode: MODE,
-    });
+    // server reads cafe settings from Supabase directly
+    const { blob } = await apiCall('create-pass', { id, name, email: email || null });
 
     // trigger download / iOS wallet install
     setLoading('opening apple wallet…');

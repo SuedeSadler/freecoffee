@@ -494,25 +494,56 @@ main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
 
 <script src="config.js"></script>
 <script>
-// ── SETTINGS ──────────────────────────────────────
-const settings  = JSON.parse(localStorage.getItem('lc_settings') || '{}');
-const CAFE      = settings.cafeName || 'Your Cafe';
-const ACCENT    = settings.accent   || '#c94f2b';
-const STAMP_IC  = settings.stamp    || '☕';
-const STAFF_PIN = settings.pin      || CONFIG.STAFF_PIN;
-const MODE      = settings.mode     || 'dark';
+// ── SETTINGS ───────────────────────────────
+// Loaded from Supabase on page load.
+// PIN comes from Vercel env var (via API) — never exposed here.
+// STAFF_PIN is used client-side only to send to the server for
+// verification; the server re-checks it on every request.
+let CAFE     = 'Your Cafe';
+let ACCENT   = '#c94f2b';
+let STAMP_IC = '☕';
+let MODE     = 'dark';
+// PIN is cached locally after setup so staff don’t need to re-enter
+// it on every page load — but the server always re-validates it.
+let STAFF_PIN = (JSON.parse(localStorage.getItem('lc_settings') || '{}').pin) || '';
 
-document.documentElement.style.setProperty('--accent', ACCENT);
-document.getElementById('hdCafe').textContent = CAFE.toLowerCase();
-
-if (MODE === 'light') {
-  document.documentElement.style.setProperty('--ink',     '#f9f6f1');
-  document.documentElement.style.setProperty('--surface', '#ffffff');
-  document.documentElement.style.setProperty('--base',    '#f2ede6');
-  document.documentElement.style.setProperty('--paper',   '#1a1208');
-  document.documentElement.style.setProperty('--muted',   '#9a8878');
-  document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+function applyTheme() {
+  document.documentElement.style.setProperty('--accent', ACCENT);
+  document.getElementById('hdCafe').textContent = CAFE.toLowerCase();
+  if (MODE === 'light') {
+    document.documentElement.style.setProperty('--ink',     '#f9f6f1');
+    document.documentElement.style.setProperty('--surface', '#ffffff');
+    document.documentElement.style.setProperty('--base',    '#f2ede6');
+    document.documentElement.style.setProperty('--paper',   '#1a1208');
+    document.documentElement.style.setProperty('--muted',   '#9a8878');
+    document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+  }
 }
+
+// 1. Apply cached settings immediately
+(function applyCached() {
+  const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+  if (cached.cafeName) {
+    CAFE = cached.cafeName; ACCENT = cached.accent || ACCENT;
+    STAMP_IC = cached.stamp || STAMP_IC; MODE = cached.mode || MODE;
+  }
+  applyTheme();
+})();
+
+// 2. Fetch fresh settings from Supabase
+(async function fetchSettings() {
+  try {
+    const s = await apiCall('get-settings', {});
+    CAFE = s.cafeName; ACCENT = s.accent; STAMP_IC = s.stamp; MODE = s.mode;
+    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+    localStorage.setItem('lc_settings', JSON.stringify({
+      ...cached, cafeName: s.cafeName, accent: s.accent, stamp: s.stamp, mode: s.mode
+    }));
+    applyTheme();
+  } catch (e) {
+    console.warn('settings fetch failed, using cached:', e.message);
+  }
+})();
 
 // ── STATE ─────────────────────────────────────────
 let gatePin   = '';
@@ -585,17 +616,14 @@ async function loadCustomer(id) {
   setState('stamping');
   document.getElementById('sfText').textContent = 'looking up customer…';
   try {
-    customer = await getCustomer(id);
-    if (!customer) {
-      setState('scan');
-      alert(`no customer found with id: ${id}`);
-      return;
-    }
+    customer = await apiCall('get-customer', { customerId: id, pin: STAFF_PIN });
     renderCustomer();
     setState('customer');
   } catch (err) {
     setState('scan');
-    alert(`error: ${err.message}`);
+    alert(err.message.includes('not found')
+      ? `no customer found with id: ${id}`
+      : `error: ${err.message}`);
   }
 }
 

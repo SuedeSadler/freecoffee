@@ -29,6 +29,23 @@ Add these in Vercel → Settings → Environment Variables:
 Run this SQL in Supabase → SQL Editor:
 
 ```sql
+-- Cafe settings table (one row per deployment)
+create table cafe_settings (
+  id         int  primary key default 1,
+  cafe_name  text not null,
+  accent     text default '#c94f2b',
+  stamp      text default '☕',
+  mode       text default 'dark',
+  updated_at timestamptz default now()
+);
+
+-- Enforce single row
+create unique index cafe_settings_single on cafe_settings ((true));
+
+-- Lock it down (service role bypasses RLS)
+alter table cafe_settings enable row level security;
+
+-- Customers table
 create table customers (
   id               text primary key,
   name             text not null,

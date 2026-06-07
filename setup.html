@@ -738,7 +738,7 @@ function pinReset() {
 }
 
 // ── FINISH ─────────────────────────────────────────
-function finish() {
+async function finish() {
   if (state.pin.length !== 4) return;
   if (!state.cafeName.trim()) {
     goStep(1);
@@ -746,20 +746,41 @@ function finish() {
     return;
   }
 
-  // save to localStorage (config.js STAFF_PIN must be updated manually)
-  const settings = {
-    mode:      state.mode,
-    accent:    state.accent,
-    cafeName:  state.cafeName.trim(),
-    stamp:     state.stamp,
-    pin:       state.pin,
-  };
-  localStorage.setItem('lc_settings', JSON.stringify(settings));
+  const btn = document.getElementById('btnFinish');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'saving…';
 
-  document.getElementById('doneNameDisplay').textContent =
-    state.cafeName.trim().toLowerCase();
+  try {
+    // save to Supabase via API (PIN verified server-side)
+    await apiCall('save-settings', {
+      pin:      state.pin,
+      cafeName: state.cafeName.trim(),
+      accent:   state.accent,
+      stamp:    state.stamp,
+      mode:     state.mode,
+    });
 
-  goStep(4);
+    // also cache locally so setup page feels instant on revisit
+    localStorage.setItem('lc_settings', JSON.stringify({
+      mode:     state.mode,
+      accent:   state.accent,
+      cafeName: state.cafeName.trim(),
+      stamp:    state.stamp,
+      pin:      state.pin,
+    }));
+
+    document.getElementById('doneNameDisplay').textContent =
+      state.cafeName.trim().toLowerCase();
+
+    goStep(4);
+
+  } catch (err) {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'finish setup';
+    alert(err.message === 'incorrect pin'
+      ? 'pin mismatch — please re-enter your pin in step 4.'
+      : `save failed: ${err.message}`);
+  }
 }
 </script>
 </body>
