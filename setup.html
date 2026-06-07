@@ -381,7 +381,7 @@ main { flex: 1; display: flex; flex-direction: column; align-items: center; padd
 <main>
 
   <!-- CONFIG WARNING -->
-  <div class="config-warn" id="configWarn" style="max-width:520px;width:100%;">
+  <div class="config-warn" id="configWarn" style="display:none;">
     <strong>⚙ Supabase not configured</strong>
     Open <code>config.js</code> and fill in your SUPABASE_URL, SUPABASE_KEY, and STAFF_PIN before going live.
   </div>
@@ -613,8 +613,6 @@ let state = {
 };
 
 // ── CONFIG CHECK ───────────────────────────────────
-if (CONFIG.SUPABASE_URL.includes('YOUR_PROJECT')) {
-  document.getElementById('configWarn').classList.add('visible');
 }
 
 // ── STEP NAV ───────────────────────────────────────
