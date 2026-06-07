@@ -1,18 +1,32 @@
 # Lucky Cup — Loyalty System
 
-Four files. No framework. Drop on any host.
-
 ## Files
-- `config.js`   — API keys, PIN, stamp count
-- `setup.html`  — cafe onboarding (run once)
-- `signup.html` — customer sign-up page (public)
-- `staff.html`  — staff stamp terminal (staff only)
+```
+config.js        ← safe client config (no secrets)
+setup.html       ← cafe onboarding (run once)
+signup.html      ← customer sign-up (public URL)
+staff.html       ← staff stamp terminal (staff only)
+api/action.js    ← Vercel serverless function (all secrets live here)
+vercel.json      ← Vercel config
+```
 
-## Setup (5 minutes)
+## Vercel Environment Variables
+Add these in Vercel → Settings → Environment Variables:
 
-### 1. Supabase
-1. Create project at supabase.com (pick Sydney region for NZ)
-2. Run this SQL in the SQL Editor:
+| Variable           | Value                                      |
+|--------------------|--------------------------------------------|
+| SUPABASE_URL       | https://xxxx.supabase.co                   |
+| SUPABASE_KEY       | your SERVICE ROLE key (not anon)           |
+| WALLETWALLET_KEY   | ww_live_...                                |
+| STAFF_PIN          | your 4-digit PIN                           |
+| STAMPS_NEEDED      | 10                                         |
+
+⚠️  Use the SERVICE ROLE key in Vercel (not the anon key).
+    The service role key is only ever used server-side in api/action.js.
+    The anon key is not needed at all — the API function handles all DB calls.
+
+## Supabase Setup
+Run this SQL in Supabase → SQL Editor:
 
 ```sql
 create table customers (
@@ -28,49 +42,30 @@ create table customers (
   last_stamp_date  date,
   created_at       timestamptz default now()
 );
+
+-- lock down the table (service role key bypasses RLS)
+alter table customers enable row level security;
 ```
 
-3. Settings → API → copy Project URL and anon public key
+With RLS enabled and no policies, only the service role key
+(used server-side in api/action.js) can read or write.
+The browser never touches Supabase directly.
 
-### 2. config.js
-Open config.js and fill in:
-```js
-SUPABASE_URL:  'https://xxxx.supabase.co',
-SUPABASE_KEY:  'eyJhbGc...',
-STAFF_PIN:     '1234',   // change this!
-```
+## Deploy
+1. Push to GitHub
+2. Import repo in Vercel
+3. Add environment variables
+4. Deploy
 
-### 3. Host
-Upload all 4 files to:
-- Netlify Drop (drag and drop, instant)
-- Vercel
-- Any static host
+## First Use
+1. Visit /setup.html → walk through 4 steps
+2. Settings saved to localStorage on that device
+3. Give customers the URL to /signup.html
+4. Staff bookmark /staff.html
 
-### 4. Setup page
-Visit setup.html once to configure:
-- Dark or light mode
-- Brand colour
-- Stamp icon
-- Staff PIN (saved to localStorage)
-
-### 5. Share
-- Give customers the URL to signup.html
-- Print a QR code linking to signup.html and put it on the counter
-- Bookmark staff.html on the counter device
-
-## How stamping works
-1. Customer shows their wallet pass QR
-2. Staff scan with phone camera → lands on staff.html?id=CUST-XXXX
-3. Staff enter PIN → tap Add Stamp
-4. Customer's pass updates live + lock-screen notification fires
-
-## Customisation
-- Change STAMPS_NEEDED in config.js (default 10)
-- Change STAFF_PIN in config.js or re-run setup.html
-- Add more preset colours in setup.html paletteGrid
-
-## Notes
-- WalletWallet free tier: 1,000 passes/month
-- One stamp per customer per day (anti-abuse)
-- Free coffee redeems reset the stamp count to 0
-- All settings stored in browser localStorage on the setup device
+## Security Model
+- Browser holds: nothing sensitive
+- api/action.js holds: Supabase service key, WalletWallet key, staff PIN
+- PIN is verified server-side on every stamp/redeem/lookup
+- Daily stamp limit enforced server-side
+- serial_number never sent to browser
