@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent:  #c94f2b;
+  --ink:     #111;
+  --surface: #1e1e1e;
+  --base:    #141414;
+  --paper:   #f4f4f2;
+  --muted:   #666660;
+  --border:  rgba(255,255,255,0.09);
+  --radius:  4px;
+}
+
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--base);
+  border-bottom: 1.5px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.hd-left {}
+.hd-eye   { font-size: 7px; letter-spacing: 0.22em; color: var(--muted); margin-bottom: 2px; }
+.hd-title { font-size: 14px; font-weight: 700; color: var(--paper); letter-spacing: -0.01em; }
+.hd-title span { color: var(--accent); }
+.hd-right { text-align: right; }
+.hd-status { font-size: 7px; letter-spacing: 0.1em; color: var(--accent); }
+.hd-status::before { content: '● '; }
+.hd-cafe { font-size: 8px; color: var(--muted); letter-spacing: 0.08em; margin-top: 2px; }
+
+.accent-rule { height: 2px; background: var(--accent); width: 100%; }
+
+main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
+
+/* ── STATES ── */
+.state { display: none; }
+.state.active { display: block; }
+
+/* ── PIN GATE ── */
+.pin-wrap { padding: 20px 0; }
+.pin-eyebrow { font-size: 8px; letter-spacing: 0.22em; color: var(--muted); margin-bottom: 6px; }
+.pin-title   { font-size: 24px; font-weight: 700; color: var(--paper); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 24px; }
+.pin-title span { color: var(--accent); }
+
+.pin-display { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+.pin-slot {
+  width: 52px; height: 60px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: var(--paper);
+  background: var(--surface);
+  transition: border-color 0.2s;
+}
+.pin-slot.filled { border-color: var(--accent); color: var(--accent); }
+.pin-slot.active { border-color: rgba(255,255,255,0.3); }
+
+.pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; max-width: 260px; margin: 0 auto 16px; }
+.pin-key {
+  padding: 15px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 20px; font-weight: 500;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--paper); text-align: center;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+  user-select: none;
+}
+.pin-key:hover  { background: #2a2a2a; }
+.pin-key:active { transform: scale(0.96); background: var(--accent); color: #fff; }
+.pin-key.dim    { color: var(--muted); }
+
+.pin-error {
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: #e05555;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.pin-error.visible { opacity: 1; }
+
+/* ── SCAN GATE (waiting for QR param) ── */
+.scan-wrap { padding: 40px 0; text-align: center; }
+.scan-icon {
+  width: 72px; height: 72px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 20px;
+}
+.scan-title { font-size: 18px; font-weight: 700; color: var(--paper); letter-spacing: -0.01em; margin-bottom: 8px; }
+.scan-sub   { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; line-height: 1.8; margin-bottom: 24px; }
+
+.manual-row { display: flex; gap: 8px; }
+.manual-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--paper);
+  letter-spacing: 0.06em;
+  transition: border-color 0.2s;
+}
+.manual-input:focus { outline: none; border-color: var(--accent); }
+.manual-input::placeholder { color: #444; }
+
+.btn-sm {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.btn-sm:hover { opacity: 0.85; }
+
+/* ── CUSTOMER CARD ── */
+.cust-card {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.cc-top {
+  background: var(--base);
+  padding: 12px 16px;
+  border-bottom: 1.5px solid var(--border);
+  border-left: 3px solid var(--accent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.cc-name  { font-size: 18px; font-weight: 700; color: var(--paper); letter-spacing: -0.01em; }
+.cc-id    { font-size: 7px; letter-spacing: 0.1em; color: var(--muted); margin-top: 3px; }
+.cc-badge {
+  font-size: 7px; letter-spacing: 0.1em;
+  color: var(--accent); border: 1px solid var(--accent);
+  padding: 3px 8px; border-radius: 2px;
+  flex-shrink: 0; margin-top: 2px;
+}
+.cc-bot { padding: 9px 16px; display: flex; justify-content: space-between; align-items: center; }
+.cc-meta { font-size: 7px; letter-spacing: 0.08em; color: var(--muted); }
+
+/* ── STAMP PROGRESS ── */
+.prog-block { margin-bottom: 14px; }
+.pb-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.pb-lbl { font-size: 7px; letter-spacing: 0.18em; color: var(--muted); }
+.pb-val { font-size: 22px; font-weight: 700; color: var(--paper); letter-spacing: -0.02em; }
+.pb-track { height: 5px; background: var(--base); border: 1.5px solid var(--border); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+.pb-fill  { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+
+.stamp-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.sd {
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  transition: background 0.3s, border-color 0.3s, transform 0.2s;
+}
+.sd.on  { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sd.off { color: var(--muted); }
+.sd.new { animation: stampPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes stampPop {
+  0%   { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+
+/* ── WIN BANNER ── */
+.win-banner {
+  background: rgba(76,168,112,0.1);
+  border: 1.5px solid rgba(76,168,112,0.4);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px;
+  display: none;
+}
+.win-banner.visible { display: flex; }
+.win-banner-icon { font-size: 28px; flex-shrink: 0; }
+.win-banner-text { font-size: 9px; color: #4ca870; letter-spacing: 0.08em; line-height: 1.7; }
+.win-banner-title { font-size: 13px; font-weight: 700; color: #4ca870; margin-bottom: 2px; letter-spacing: -0.01em; }
+
+/* ── PIN BLOCK (stamp confirm) ── */
+.confirm-pin-block {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.cpb-hd {
+  background: var(--base);
+  border-bottom: 1.5px solid var(--border);
+  padding: 8px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.cpb-lbl  { font-size: 7px; letter-spacing: 0.18em; color: var(--muted); }
+.cpb-dots { display: flex; gap: 5px; }
+.cpb-dot  { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--border); }
+.cpb-dot.on { background: var(--accent); border-color: var(--accent); }
+
+.confirm-pin-grid { display: grid; grid-template-columns: repeat(3,1fr); }
+.cpk {
+  padding: 10px 4px; text-align: center;
+  font-size: 16px; font-weight: 500;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--paper); background: var(--surface);
+  font-family: 'IBM Plex Mono', monospace; cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.cpk:hover { background: #2a2a2a; }
+.cpk:active { background: var(--accent); color: #fff; }
+.cpk:nth-child(3n)    { border-right: none; }
+.cpk:nth-last-child(-n+3) { border-bottom: none; }
+.cpk.dim { color: var(--muted); }
+
+/* ── STAMP BUTTON ── */
+.btn-stamp {
+  background: var(--accent);
+  color: #fff; border: none;
+  border-radius: var(--radius);
+  padding: 14px 18px; width: 100%;
+  font-size: 11px; letter-spacing: 0.2em; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-bottom: 10px;
+}
+.btn-stamp:hover { opacity: 0.88; }
+.btn-stamp.locked { opacity: 0.2; cursor: not-allowed; }
+.btn-stamp:disabled { opacity: 0.2; cursor: not-allowed; }
+
+.btn-redeem {
+  background: rgba(76,168,112,0.15);
+  color: #4ca870;
+  border: 1.5px solid rgba(76,168,112,0.4);
+  border-radius: var(--radius);
+  padding: 14px 18px; width: 100%;
+  font-size: 11px; letter-spacing: 0.2em; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer; margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.btn-redeem:hover { background: rgba(76,168,112,0.22); }
+
+.btn-new-scan {
+  background: transparent;
+  color: var(--muted);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 18px; width: 100%;
+  font-size: 9px; letter-spacing: 0.16em;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-new-scan:hover { border-color: rgba(255,255,255,0.2); color: var(--paper); }
+
+/* ── STAMPING FEEDBACK ── */
+.stamp-feedback {
+  text-align: center;
+  padding: 40px 0;
+}
+.sf-spinner {
+  display: inline-block; width: 36px; height: 36px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.sf-text { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
+
+/* daily limit */
+.daily-warn {
+  background: rgba(232,160,48,0.08);
+  border: 1px solid rgba(232,160,48,0.3);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-size: 8px;
+  color: #e8a030;
+  letter-spacing: 0.08em;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  display: none;
+}
+.daily-warn.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <div class="hd-eye">staff · secure terminal</div>
+    <div class="hd-title">stamp<span>.</span></div>
+  </div>
+  <div class="hd-right">
+    <div class="hd-status">ready</div>
+    <div class="hd-cafe" id="hdCafe">—</div>
+  </div>
+</header>
+<div class="accent-rule"></div>
+
+<main>
+
+  <!-- ── PIN GATE ── -->
+  <div class="state active" id="statePin">
+    <div class="pin-wrap">
+      <div class="pin-eyebrow">staff access</div>
+      <div class="pin-title">enter your<br><span>pin.</span></div>
+      <div class="pin-display" id="pinDisplay">
+        <div class="pin-slot active" id="ps0">_</div>
+        <div class="pin-slot" id="ps1">_</div>
+        <div class="pin-slot" id="ps2">_</div>
+        <div class="pin-slot" id="ps3">_</div>
+      </div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pinKey('1')">1</div>
+        <div class="pin-key" onclick="pinKey('2')">2</div>
+        <div class="pin-key" onclick="pinKey('3')">3</div>
+        <div class="pin-key" onclick="pinKey('4')">4</div>
+        <div class="pin-key" onclick="pinKey('5')">5</div>
+        <div class="pin-key" onclick="pinKey('6')">6</div>
+        <div class="pin-key" onclick="pinKey('7')">7</div>
+        <div class="pin-key" onclick="pinKey('8')">8</div>
+        <div class="pin-key" onclick="pinKey('9')">9</div>
+        <div class="pin-key dim" onclick="pinClear()">⌫</div>
+        <div class="pin-key" onclick="pinKey('0')">0</div>
+        <div class="pin-key dim" onclick="pinReset()">✕</div>
+      </div>
+      <div class="pin-error" id="pinError">incorrect pin · try again</div>
+    </div>
+  </div>
+
+  <!-- ── SCAN WAITING ── -->
+  <div class="state" id="stateScan">
+    <div class="scan-wrap">
+      <div class="scan-icon">📷</div>
+      <div class="scan-title">scan customer's<br>wallet pass.</div>
+      <div class="scan-sub">
+        point your phone camera at the QR code<br>
+        on the customer's loyalty card.<br>
+        it will open this page automatically.
+      </div>
+
+      <div style="font-size:7px;letter-spacing:0.18em;color:var(--muted);margin-bottom:10px;text-align:left;">// or enter id manually</div>
+      <div class="manual-row">
+        <input class="manual-input" id="manualId" placeholder="CUST-ABC123" onkeydown="if(event.key==='Enter')lookupManual()"/>
+        <button class="btn-sm" onclick="lookupManual()">look up →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CUSTOMER LOADED ── -->
+  <div class="state" id="stateCustomer">
+
+    <!-- customer card -->
+    <div class="cust-card" id="custCard">
+      <div class="cc-top">
+        <div>
+          <div class="cc-name" id="ccName">—</div>
+          <div class="cc-id"   id="ccId">—</div>
+        </div>
+        <div class="cc-badge" id="ccBadge">active</div>
+      </div>
+      <div class="cc-bot">
+        <div class="cc-meta" id="ccMeta">—</div>
+        <div class="cc-meta" id="ccJoined">—</div>
+      </div>
+    </div>
+
+    <!-- win banner -->
+    <div class="win-banner" id="winBanner">
+      <div class="win-banner-icon">🎉</div>
+      <div>
+        <div class="win-banner-title">free coffee earned!</div>
+        <div class="win-banner-text">
+          this customer has reached 10 stamps.<br>
+          redeem their free coffee below.
+        </div>
+      </div>
+    </div>
+
+    <!-- daily limit warning -->
+    <div class="daily-warn" id="dailyWarn">
+      ⚠ already stamped today · one stamp per customer per day
+    </div>
+
+    <!-- progress -->
+    <div class="prog-block">
+      <div class="pb-top">
+        <span class="pb-lbl">stamps collected</span>
+        <span class="pb-val" id="pbVal">0/10</span>
+      </div>
+      <div class="pb-track"><div class="pb-fill" id="pbFill" style="width:0%"></div></div>
+      <div class="stamp-dots" id="stampDots"></div>
+    </div>
+
+    <!-- confirm pin -->
+    <div class="confirm-pin-block">
+      <div class="cpb-hd">
+        <div class="cpb-lbl">staff pin required</div>
+        <div class="cpb-dots" id="cpbDots">
+          <div class="cpb-dot" id="cd0"></div>
+          <div class="cpb-dot" id="cd1"></div>
+          <div class="cpb-dot" id="cd2"></div>
+          <div class="cpb-dot" id="cd3"></div>
+        </div>
+      </div>
+      <div class="confirm-pin-grid">
+        <div class="cpk" onclick="cPinKey('1')">1</div>
+        <div class="cpk" onclick="cPinKey('2')">2</div>
+        <div class="cpk" onclick="cPinKey('3')">3</div>
+        <div class="cpk" onclick="cPinKey('4')">4</div>
+        <div class="cpk" onclick="cPinKey('5')">5</div>
+        <div class="cpk" onclick="cPinKey('6')">6</div>
+        <div class="cpk" onclick="cPinKey('7')">7</div>
+        <div class="cpk" onclick="cPinKey('8')">8</div>
+        <div class="cpk" onclick="cPinKey('9')">9</div>
+        <div class="cpk dim" onclick="cPinClear()">⌫</div>
+        <div class="cpk" onclick="cPinKey('0')">0</div>
+        <div class="cpk dim" onclick="cPinReset()">✕</div>
+      </div>
+    </div>
+
+    <button class="btn-stamp locked" id="btnStamp" onclick="doStamp()" disabled>
+      <span>+ add stamp</span><span id="btnStampIcon">✦</span>
+    </button>
+    <button class="btn-redeem" id="btnRedeem" onclick="doRedeem()" style="display:none;">
+      <span>✓ redeem free coffee</span>
+    </button>
+    <button class="btn-new-scan" onclick="newScan()">← scan another card</button>
+
+  </div>
+
+  <!-- ── STAMPING ── -->
+  <div class="state" id="stateStamping">
+    <div class="stamp-feedback">
+      <div class="sf-spinner"></div>
+      <div class="sf-text" id="sfText">adding stamp…</div>
+    </div>
+  </div>
+
+  <!-- ── DONE ── -->
+  <div class="state" id="stateDone">
+    <div style="text-align:center;padding:40px 0;">
+      <div style="font-size:52px;margin-bottom:16px;" id="doneIcon">✦</div>
+      <div style="font-size:22px;font-weight:700;color:var(--paper);letter-spacing:-0.02em;margin-bottom:8px;" id="doneTitle">stamp added.</div>
+      <div style="font-size:9px;color:var(--muted);letter-spacing:0.08em;line-height:1.8;margin-bottom:28px;" id="doneSub">customer notified on their phone.</div>
+      <button class="btn-new-scan" onclick="newScan()" style="max-width:260px;margin:0 auto;">← scan another card</button>
+    </div>
+  </div>
+
+</main>
+
+<script src="config.js"></script>
+<script>
+// ── SETTINGS ──────────────────────────────────────
+const settings  = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+const CAFE      = settings.cafeName || 'Your Cafe';
+const ACCENT    = settings.accent   || '#c94f2b';
+const STAMP_IC  = settings.stamp    || '☕';
+const STAFF_PIN = settings.pin      || CONFIG.STAFF_PIN;
+const MODE      = settings.mode     || 'dark';
+
+document.documentElement.style.setProperty('--accent', ACCENT);
+document.getElementById('hdCafe').textContent = CAFE.toLowerCase();
+
+if (MODE === 'light') {
+  document.documentElement.style.setProperty('--ink',     '#f9f6f1');
+  document.documentElement.style.setProperty('--surface', '#ffffff');
+  document.documentElement.style.setProperty('--base',    '#f2ede6');
+  document.documentElement.style.setProperty('--paper',   '#1a1208');
+  document.documentElement.style.setProperty('--muted',   '#9a8878');
+  document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+}
+
+// ── STATE ─────────────────────────────────────────
+let gatePin   = '';
+let cPin      = '';
+let customer  = null;
+let alreadyStampedToday = false;
+
+function setState(s) {
+  document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+  document.getElementById(`state${s.charAt(0).toUpperCase()+s.slice(1)}`).classList.add('active');
+}
+
+// ── PIN GATE ──────────────────────────────────────
+function pinKey(d) {
+  if (gatePin.length < 4) {
+    gatePin += d;
+    renderGatePin();
+    if (gatePin.length === 4) checkGatePin();
+  }
+}
+function pinClear() { gatePin = gatePin.slice(0,-1); renderGatePin(); }
+function pinReset() { gatePin = ''; renderGatePin(); }
+
+function renderGatePin() {
+  for (let i = 0; i < 4; i++) {
+    const s = document.getElementById(`ps${i}`);
+    s.textContent = i < gatePin.length ? '●' : '_';
+    s.classList.toggle('filled', i < gatePin.length);
+    s.classList.toggle('active', i === gatePin.length);
+  }
+}
+
+function checkGatePin() {
+  if (gatePin === STAFF_PIN) {
+    // check for QR param
+    const urlId = new URLSearchParams(location.search).get('id');
+    if (urlId) {
+      loadCustomer(urlId);
+    } else {
+      setState('scan');
+    }
+  } else {
+    document.getElementById('pinError').classList.add('visible');
+    setTimeout(() => {
+      gatePin = '';
+      renderGatePin();
+      document.getElementById('pinError').classList.remove('visible');
+    }, 900);
+  }
+}
+
+// check for id param on load (QR scan lands here)
+window.addEventListener('DOMContentLoaded', () => {
+  const urlId = new URLSearchParams(location.search).get('id');
+  if (urlId) {
+    // pin still needed first — checkGatePin will loadCustomer after auth
+    document.querySelector('.pin-eyebrow').textContent = 'qr scanned · enter pin to continue';
+  }
+});
+
+// ── MANUAL LOOKUP ────────────────────────────────
+async function lookupManual() {
+  const id = document.getElementById('manualId').value.trim().toUpperCase();
+  if (!id) return;
+  await loadCustomer(id);
+}
+
+// ── LOAD CUSTOMER ─────────────────────────────────
+async function loadCustomer(id) {
+  setState('stamping');
+  document.getElementById('sfText').textContent = 'looking up customer…';
+  try {
+    customer = await getCustomer(id);
+    if (!customer) {
+      setState('scan');
+      alert(`no customer found with id: ${id}`);
+      return;
+    }
+    renderCustomer();
+    setState('customer');
+  } catch (err) {
+    setState('scan');
+    alert(`error: ${err.message}`);
+  }
+}
+
+function renderCustomer() {
+  const c       = customer;
+  const stamps  = c.stamps || 0;
+  const needed  = CONFIG.STAMPS_NEEDED;
+  const pct     = Math.min((stamps / needed) * 100, 100);
+  const isWon   = stamps >= needed;
+  const today   = new Date().toISOString().slice(0,10);
+
+  alreadyStampedToday = c.last_stamp_date === today;
+
+  document.getElementById('ccName').textContent   = c.name;
+  document.getElementById('ccId').textContent     = `#${c.id} · via ${new URLSearchParams(location.search).get('id') ? 'qr scan' : 'manual'}`;
+  document.getElementById('ccBadge').textContent  = isWon ? 'reward ready' : 'active';
+  document.getElementById('ccBadge').style.color  = isWon ? '#4ca870' : '';
+  document.getElementById('ccBadge').style.borderColor = isWon ? '#4ca870' : '';
+  document.getElementById('ccMeta').textContent   = `${stamps} of ${needed} stamps`;
+  document.getElementById('ccJoined').textContent = `joined ${new Date(c.created_at).toLocaleDateString('en-NZ',{month:'short',year:'numeric'})}`;
+
+  document.getElementById('pbVal').textContent = `${stamps}/${needed}`;
+  document.getElementById('pbFill').style.width = `${pct}%`;
+
+  // stamp dots
+  const dots = document.getElementById('stampDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < needed; i++) {
+    const d = document.createElement('div');
+    d.className = `sd ${i < stamps ? 'on' : 'off'}`;
+    d.textContent = i < stamps ? STAMP_IC : (i+1).toString();
+    dots.appendChild(d);
+  }
+
+  // win banner
+  document.getElementById('winBanner').classList.toggle('visible', isWon);
+
+  // daily limit warning
+  document.getElementById('dailyWarn').classList.toggle('visible', alreadyStampedToday && !isWon);
+
+  // buttons
+  const canStamp = !isWon && !alreadyStampedToday;
+  document.getElementById('btnStamp').style.display  = isWon ? 'none' : 'flex';
+  document.getElementById('btnRedeem').style.display = isWon ? 'flex' : 'none';
+  document.getElementById('btnStamp').disabled = true;
+  document.getElementById('btnStamp').classList.add('locked');
+
+  // reset confirm pin
+  cPin = '';
+  renderCPin();
+}
+
+// ── CONFIRM PIN (stamp page) ──────────────────────
+function cPinKey(d) {
+  if (cPin.length < 4) {
+    cPin += d;
+    renderCPin();
+    if (cPin.length === 4) checkCPin();
+  }
+}
+function cPinClear() { cPin = cPin.slice(0,-1); renderCPin(); }
+function cPinReset() { cPin = ''; renderCPin(); }
+
+function renderCPin() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(`cd${i}`);
+    d.classList.toggle('on', i < cPin.length);
+  }
+}
+
+function checkCPin() {
+  if (cPin === STAFF_PIN) {
+    const stamps = customer.stamps || 0;
+    const isWon  = stamps >= CONFIG.STAMPS_NEEDED;
+    const today  = new Date().toISOString().slice(0,10);
+    if (!isWon && !alreadyStampedToday) {
+      document.getElementById('btnStamp').disabled = false;
+      document.getElementById('btnStamp').classList.remove('locked');
+    }
+  } else {
+    // wrong — flash and reset
+    ['cd0','cd1','cd2','cd3'].forEach(id => {
+      document.getElementById(id).style.background = '#e05555';
+      document.getElementById(id).style.borderColor = '#e05555';
+    });
+    setTimeout(() => {
+      cPin = '';
+      renderCPin();
+      ['cd0','cd1','cd2','cd3'].forEach(id => {
+        document.getElementById(id).style.background = '';
+        document.getElementById(id).style.borderColor = '';
+      });
+    }, 700);
+  }
+}
+
+// ── ADD STAMP ─────────────────────────────────────
+async function doStamp() {
+  if (!customer) return;
+  setState('stamping');
+  document.getElementById('sfText').textContent = 'adding stamp…';
+
+  try {
+    const newStamps = (customer.stamps || 0) + 1;
+    const today     = new Date().toISOString().slice(0,10);
+    const isWon     = newStamps >= CONFIG.STAMPS_NEEDED;
+
+    document.getElementById('sfText').textContent = 'updating wallet pass…';
+    await updatePass(
+      customer.serial_number,
+      { ...customer, stamps: newStamps },
+      { cafe_name: CAFE, accent: ACCENT },
+    );
+
+    document.getElementById('sfText').textContent = 'saving…';
+    await updateCustomer(customer.id, {
+      stamps:          newStamps,
+      last_stamp_date: today,
+      redeemed:        false,
+    });
+
+    // success
+    document.getElementById('doneIcon').textContent   = isWon ? '🎉' : STAMP_IC;
+    document.getElementById('doneTitle').textContent  = isWon ? 'free coffee earned!' : 'stamp added.';
+    document.getElementById('doneSub').textContent    = isWon
+      ? `${customer.name} has earned a free coffee!`
+      : `${customer.name} now has ${newStamps} of ${CONFIG.STAMPS_NEEDED} stamps. notified on their phone.`;
+
+    setState('done');
+
+  } catch (err) {
+    setState('customer');
+    alert(`stamp failed: ${err.message}`);
+  }
+}
+
+// ── REDEEM ────────────────────────────────────────
+async function doRedeem() {
+  if (!customer) return;
+  if (!confirm(`redeem free coffee for ${customer.name}? this will reset their stamp card to 0.`)) return;
+
+  setState('stamping');
+  document.getElementById('sfText').textContent = 'redeeming…';
+
+  try {
+    await updateCustomer(customer.id, { stamps: 0, redeemed: true, last_stamp_date: null });
+    await updatePass(
+      customer.serial_number,
+      { ...customer, stamps: 0 },
+      { cafe_name: CAFE, accent: ACCENT },
+    );
+
+    document.getElementById('doneIcon').textContent  = '☕';
+    document.getElementById('doneTitle').textContent = 'enjoy!';
+    document.getElementById('doneSub').textContent   = `free coffee redeemed for ${customer.name}. their card has been reset.`;
+    setState('done');
+  } catch (err) {
+    setState('customer');
+    alert(`redeem failed: ${err.message}`);
+  }
+}
+
+function newScan() {
+  customer = null;
+  cPin = '';
+  // clear QR param from URL
+  history.replaceState({}, '', location.pathname);
+  setState('scan');
+}
+</script>
+</body>
+</html>

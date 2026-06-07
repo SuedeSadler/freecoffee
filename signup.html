@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loyalty Card — Sign Up</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── THEME — loaded from localStorage ── */
+:root {
+  --accent:  #c94f2b;
+  --ink:     #111;
+  --surface: #1e1e1e;
+  --base:    #141414;
+  --paper:   #f4f4f2;
+  --muted:   #666660;
+  --border:  rgba(255,255,255,0.09);
+}
+
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px 48px;
+}
+
+/* ── HERO ── */
+.hero-wrap { width: 100%; max-width: 420px; }
+
+.eyebrow {
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  color: var(--accent);
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+.title {
+  font-size: clamp(36px, 10vw, 52px);
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  margin-bottom: 8px;
+}
+.title span { color: var(--accent); }
+
+.subtitle {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  margin-bottom: 36px;
+}
+
+/* ── STAMP DOTS ROW ── */
+.stamp-track {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.st-dot {
+  width: 20px; height: 20px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.st-dot.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.st-label { font-size: 8px; letter-spacing: 0.1em; color: var(--muted); margin-left: 6px; }
+
+/* ── FORM ── */
+.card {
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.card-hd {
+  background: var(--base);
+  padding: 11px 18px;
+  font-size: 7px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.card-body { padding: 18px; }
+
+.f-label { font-size: 7px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 5px; }
+.f-input {
+  background: var(--base);
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--paper);
+  width: 100%;
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+}
+.f-input:focus { outline: none; border-color: var(--accent); }
+.f-input::placeholder { color: #444; }
+.f-input:last-child { margin-bottom: 0; }
+
+.btn-signup {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 14px 20px;
+  width: 100%;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: opacity 0.2s;
+  margin-top: 16px;
+}
+.btn-signup:hover   { opacity: 0.88; }
+.btn-signup:disabled{ opacity: 0.3; cursor: not-allowed; }
+
+.wallet-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  margin-top: 10px;
+}
+.wn-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+/* ── STATES ── */
+.state { display: none; }
+.state.active { display: block; }
+
+/* ── LOADING ── */
+.loading-wrap {
+  text-align: center;
+  padding: 40px 0;
+}
+.spinner {
+  display: inline-block;
+  width: 32px; height: 32px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
+
+/* ── SUCCESS ── */
+.success-wrap { text-align: center; padding: 20px 0; }
+.success-icon { font-size: 52px; margin-bottom: 16px; display: block; }
+.success-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.success-title span { color: var(--accent); }
+.success-sub  { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; line-height: 1.8; margin-bottom: 24px; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 20px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  width: 100%;
+}
+.btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: var(--paper); }
+
+/* ── ERROR ── */
+.error-box {
+  background: rgba(224,85,85,0.08);
+  border: 1px solid rgba(224,85,85,0.3);
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-size: 8px;
+  color: #e05555;
+  letter-spacing: 0.08em;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+/* footer */
+.footer-note { font-size: 7px; letter-spacing: 0.1em; color: #333; text-align: center; margin-top: 20px; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="hero-wrap">
+
+  <!-- ── SIGN-UP STATE ── -->
+  <div class="state active" id="stateSignup">
+    <div class="eyebrow" id="cafeEyebrow">your cafe · loyalty</div>
+    <div class="title">loyalty<br><span>card.</span></div>
+    <div class="subtitle">collect 10 stamps, get a free coffee.<br>saved straight to apple wallet.</div>
+
+    <div class="stamp-track" id="stampTrack">
+      <!-- rendered by JS -->
+    </div>
+
+    <div class="card">
+      <div class="card-hd">// your details</div>
+      <div class="card-body">
+        <div class="f-label">your name</div>
+        <input class="f-input" id="nameInput" placeholder="jane smith" autocomplete="name"/>
+        <div class="f-label">email (optional · for updates)</div>
+        <input class="f-input" id="emailInput" placeholder="jane@email.com" type="email" autocomplete="email"/>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox" style="display:none;"></div>
+
+    <button class="btn-signup" id="btnSignup" onclick="doSignup()">
+      <span>get my loyalty card</span>
+      <span>→</span>
+    </button>
+    <div class="wallet-note">
+      <div class="wn-dot"></div>
+      opens apple wallet · saves automatically
+    </div>
+  </div>
+
+  <!-- ── LOADING STATE ── -->
+  <div class="state" id="stateLoading">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">creating your card…</div>
+    </div>
+  </div>
+
+  <!-- ── SUCCESS STATE ── -->
+  <div class="state" id="stateSuccess">
+    <div class="success-wrap">
+      <span class="success-icon">✦</span>
+      <div class="success-title">card<br><span>saved.</span></div>
+      <div class="success-sub">
+        your loyalty card is in apple wallet.<br>
+        double-tap the side button to see it.<br>
+        <br>
+        we'll ping you every time you get a stamp<br>
+        and when your free coffee is ready.
+      </div>
+      <button class="btn-secondary" onclick="reset()">sign up another card</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-note" id="footerNote">
+  powered by lucky cup ✦
+</div>
+
+<script src="config.js"></script>
+<script>
+// ── LOAD SETTINGS ──────────────────────────────────
+const settings = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+const CAFE      = settings.cafeName  || 'Your Cafe';
+const ACCENT    = settings.accent    || '#c94f2b';
+const STAMP     = settings.stamp     || '☕';
+const MODE      = settings.mode      || 'dark';
+
+// apply theme
+document.documentElement.style.setProperty('--accent', ACCENT);
+if (MODE === 'light') {
+  document.documentElement.style.setProperty('--ink',     '#f9f6f1');
+  document.documentElement.style.setProperty('--surface', '#ffffff');
+  document.documentElement.style.setProperty('--base',    '#f2ede6');
+  document.documentElement.style.setProperty('--paper',   '#1a1208');
+  document.documentElement.style.setProperty('--muted',   '#9a8878');
+  document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
+}
+
+// cafe name
+document.getElementById('cafeEyebrow').textContent = `${CAFE.toLowerCase()} · loyalty`;
+document.title = `${CAFE} — Loyalty Card`;
+
+// stamp track
+const track = document.getElementById('stampTrack');
+for (let i = 0; i < 10; i++) {
+  const d = document.createElement('div');
+  d.className = 'st-dot';
+  track.appendChild(d);
+}
+const lbl = document.createElement('div');
+lbl.className = 'st-label';
+lbl.textContent = '10 stamps = free coffee';
+track.appendChild(lbl);
+
+// ── SIGN UP ────────────────────────────────────────
+async function doSignup() {
+  const name  = document.getElementById('nameInput').value.trim();
+  const email = document.getElementById('emailInput').value.trim();
+
+  if (!name) {
+    showError('please enter your name to continue.');
+    document.getElementById('nameInput').focus();
+    return;
+  }
+
+  hideError();
+  setState('loading');
+  setLoading('creating your card…');
+
+  try {
+    const id = genId();
+
+    const cafeSettings = { cafe_name: CAFE, accent: ACCENT };
+
+    // create pass
+    setLoading('generating your wallet pass…');
+    const { blob, serial } = await createPass(
+      { id, name, stamps: 0 },
+      cafeSettings,
+    );
+
+    // save to supabase
+    setLoading('saving your membership…');
+    await createCustomer({
+      id,
+      name,
+      email: email || null,
+      serial_number: serial,
+      stamps: 0,
+      accent: ACCENT,
+      cafe_name: CAFE,
+      mode: MODE,
+    });
+
+    // trigger download / iOS wallet install
+    setLoading('opening apple wallet…');
+    downloadBlob(blob, 'loyalty-card.pkpass');
+
+    setTimeout(() => setState('success'), 800);
+
+  } catch (err) {
+    setState('signup');
+    showError(`something went wrong: ${err.message}`);
+  }
+}
+
+function setState(s) {
+  document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+  document.getElementById(`state${s.charAt(0).toUpperCase()+s.slice(1)}`).classList.add('active');
+}
+function setLoading(msg) { document.getElementById('loadingText').textContent = msg; }
+function showError(msg)  { const e = document.getElementById('errorBox'); e.textContent = msg; e.style.display='block'; }
+function hideError()     { document.getElementById('errorBox').style.display='none'; }
+function reset() { setState('signup'); document.getElementById('nameInput').value=''; document.getElementById('emailInput').value=''; }
+</script>
+</body>
+</html>
