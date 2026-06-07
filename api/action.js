@@ -144,30 +144,35 @@ export default async function handler(req, res) {
 
   try {
 
-    // ── SAVE SETTINGS (setup page — PIN protected) ──────────────────
+
+    // ── SAVE SETTINGS (setup page — PIN protected) ──────────────
     if (action === 'save-settings') {
       const { pin, cafeName, accent, stamp, mode } = payload || {};
-      if (!cafeName)       return res.status(400).json({ error: 'cafeName required' });
+      if (!cafeName)         return res.status(400).json({ error: 'cafeName required' });
       if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
 
-      // upsert — single row with id=1 (one cafe per deployment)
-      await sbFetch('cafe_settings?id=eq.1', {
-        method: 'DELETE',
-        prefer: '',
-      }).catch(() => {}); // ignore if doesn't exist yet
-
-      await sbFetch('cafe_settings', {
+      // true upsert — insert or update in a single Supabase call
+      const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/cafe_settings`, {
         method: 'POST',
-        prefer: 'return=representation',
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type':  'application/json',
+          'Prefer':        'resolution=merge-duplicates',
+        },
         body: JSON.stringify({
-          id:        1,
-          cafe_name: cafeName.trim(),
-          accent:    accent  || '#c94f2b',
-          stamp:     stamp   || '☕',
-          mode:      mode    || 'dark',
+          id:         1,
+          cafe_name:  cafeName.trim(),
+          accent:     accent || '#c94f2b',
+          stamp:      stamp  || '☕',
+          mode:       mode   || 'dark',
           updated_at: new Date().toISOString(),
         }),
       });
+      if (!upsertRes.ok) {
+        const t = await upsertRes.text();
+        throw new Error(t || `supabase upsert ${upsertRes.status}`);
+      }
 
       return res.status(200).json({ success: true });
     }
