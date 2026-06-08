@@ -131,7 +131,7 @@ export default async function handler(req, res) {
   }
 
   function makeStripDataUri(stamps,needed,accentHex,versionN){
-    const W=1125,H=369,[ar,ag,ab]=_rgb(accentHex),bg=[245,237,224];
+    const W=1125,H=369,[ar,ag,ab]=_rgb(accentHex),bg=[26,26,26]; // dark bg matches pass
     const cols=5,rows=2,padX=80,padTop=24,padBot=20;
     const gapX=Math.floor((W-padX*2)/cols),gapY=Math.floor((H-padTop-padBot)/rows);
     const R=Math.floor(Math.min(gapX,gapY)*0.44),S=R*2;
@@ -143,18 +143,18 @@ export default async function handler(req, res) {
       const lx=px-cx,ly=py-cy,d2=lx*lx+ly*ly;
       if(d2>R*R)return null;
       if(i<stamps){if(_cup(lx+R,ly+R,S))return[...bg,255];return[ar,ag,ab,255];}
-      else{const iR=R-4;if(d2>=iR*iR)return[ar,ag,ab,80];return null;}
+      else{const iR=R-4;if(d2>=iR*iR)return[ar,ag,ab,140];return null;}
     }
     return _png(W,H,(px,py)=>{
       if(px<3&&py<3)return[bg[0],bg[1],vB,255];
-      if(py>=ruleY)return[ar,ag,ab,255];
+      if(py>=ruleY)return[ar,ag,ab,180]; // softer rule on dark
       for(let i=0;i<needed;i++){const h=gs(px,py,i);if(h)return h;}
       return[...bg,255];
     });
   }
 
   function makeLogoDataUri(accentHex){
-    const W=160,H=50,[ar,ag,ab]=_rgb(accentHex),r=8;
+    const W=160,H=50,[ar,ag,ab]=_rgb(accentHex),r=8; // accent colour logo on dark pass
     return _png(W,H,(px,py)=>{
       const ic=(px<r&&py<r&&(px-r)**2+(py-r)**2>r*r)||(px>W-r&&py<r&&(px-(W-r))**2+(py-r)**2>r*r)||(px<r&&py>H-r&&(px-r)**2+(py-(H-r))**2>r*r)||(px>W-r&&py>H-r&&(px-(W-r))**2+(py-(H-r))**2>r*r);
       return ic?[0,0,0,0]:[ar,ag,ab,255];
@@ -178,19 +178,13 @@ export default async function handler(req, res) {
       logoText:         s.cafe_name,
       organizationName: s.cafe_name,
       description:      'Loyalty card',
-      // headerFields: top-right corner — always visible, never overlaps strip
-      headerFields: [{
+      // primaryFields: left side below strip — member name
+      // secondaryFields are rendered right of primary — stamp count goes there
+      primaryFields: [{
         label: 'MEMBER',
         value: customer.name,
       }],
-      // primaryFields: sits ON TOP of strip image — keep empty/minimal
-      // so it doesn't overlay the stamps. A zero-width space keeps
-      // Apple happy (requires at least one primary field with a value).
-      primaryFields: [{
-        label: ' ',
-        value: ' ',
-      }],
-      // secondaryFields: rendered BELOW the strip — stamp count + reward
+      // secondaryFields: right side below strip — stamp count
       secondaryFields: [
         {
           label: 'STAMPS',
@@ -198,10 +192,6 @@ export default async function handler(req, res) {
           changeMessage: isComplete
             ? `🎉 Free coffee earned at ${s.cafe_name}!`
             : `Stamp added — you now have %@ stamps`,
-        },
-        {
-          label: isComplete ? 'REWARD' : 'TO GO',
-          value: isComplete ? 'FREE COFFEE ☕' : `${needed - stamps} more`,
         },
       ],
       backFields: [
@@ -220,7 +210,7 @@ export default async function handler(req, res) {
             : `${s.cafe_name}: stamp added — ${stamps} of ${needed}`,
         },
       ],
-      color:            '#f5ede0',
+      color:            '#1a1a1a',
       expirationDays:   365,
       sharingProhibited:true,
       ...(stripUrl ? { stripURL: stripUrl } : {}),
