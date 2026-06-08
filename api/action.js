@@ -122,11 +122,15 @@ export default async function handler(req, res) {
         },
         { label: 'Member ID', value: customer.id },
         {
-          label:         'Notifications',
+          // Notification anchor — value must change on every update to fire a push.
+          // We include a timestamp so it's always unique, even if stamps didn't change.
+          label:         'Last update',
           value:         isComplete
-            ? `🎉 You've earned a free coffee at ${s.cafe_name}!`
-            : `${s.cafe_name}: ${stamps} of ${needed} stamps.`,
-          changeMessage: '%@',
+            ? `🎉 Free coffee ready! Updated ${new Date().toISOString()}`
+            : `${stamps} of ${needed} stamps · ${new Date().toISOString()}`,
+          changeMessage: isComplete
+            ? `🎉 Free coffee earned at ${s.cafe_name}!`
+            : `${s.cafe_name}: stamp added — ${stamps} of ${needed}`,
         },
       ],
       // Pro features — cream background, visual strip, logo, icon
