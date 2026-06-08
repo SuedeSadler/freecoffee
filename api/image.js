@@ -5,7 +5,10 @@
 import zlib from 'zlib';
 
 export default function handler(req, res) {
-  const { type, stamps, needed, accent, name } = req.query;
+  const { type, stamps, needed, accent, name, v } = req.query;
+  // v is a cache-buster — we embed the last digit into a corner pixel
+  // so the image bytes are always unique even when content is identical
+  const versionByte = v ? (parseInt(v.slice(-3), 10) % 200) + 28 : 28;
 
   const accentHex = decodeURIComponent(accent || '#c94f2b');
   const cafeName  = decodeURIComponent(name   || 'Cafe');
@@ -188,6 +191,9 @@ function makeStrip(stamps, needed, accentHex) {
   }
 
   return makePng(W, H, (px, py) => {
+    // Single corner pixel carries the version byte — ensures unique image bytes
+    // even when stamp count and colour are identical. Invisible to the eye.
+    if (px < 3 && py < 3) return [bg[0], bg[1], versionByte, 255];
     if (py >= ruleY) return [ar,ag,ab,255];
     for (let i = 0; i < needed; i++) {
       const hit = getStamp(px, py, i);

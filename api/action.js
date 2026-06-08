@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     const needed     = STAMPS_NEEDED;
     const isComplete = stamps >= needed;
     const accent     = s.accent || '#c94f2b';
-    const bust       = `${Date.now()}`;
+    const bust       = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
 
     const stripUrl = imageUrl('strip', {
       stamps, needed, accent, name: s.cafe_name, v: bust,
