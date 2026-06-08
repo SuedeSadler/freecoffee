@@ -204,10 +204,10 @@ export default async function handler(req, res) {
       logoText:         s.cafe_name,
       organizationName: s.cafe_name,
       description:      'Loyalty card',
-      // primaryFields: must exist but kept invisible so nothing overlays strip
+      // primaryFields: invisible normally, shows redemption message when complete
       primaryFields: [{
-        label: ' ',
-        value: ' ',
+        label: isComplete ? 'REDEEM' : ' ',
+        value: isComplete ? '1 FREE COFFEE' : ' ',
       }],
       // secondaryFields: below the strip — name left, stamps right
       secondaryFields: [
@@ -217,7 +217,7 @@ export default async function handler(req, res) {
         },
         {
           label: 'STAMPS',
-          value: `${stamps} of ${needed}`,
+          value: isComplete ? '10 of 10 ✓' : `${stamps} of ${needed}`,
           changeMessage: isComplete
             ? `🎉 Free coffee earned at ${s.cafe_name}!`
             : `Stamp added — you now have %@ stamps`,
