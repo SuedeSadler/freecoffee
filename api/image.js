@@ -144,64 +144,56 @@ function inCup(lx, ly, S) {
 }
 
 // ── STRIP IMAGE ───────────────────────────────────────────────────
-// Apple Wallet strip: 1125×432px @3x (375×144pt)
+// 1125×720px @3x (375×240pt)
+// Top 33% = text zone (member name, labels rendered by Apple Wallet)
+// Bottom 67% = two rows of 5 stamp icons — like a real loyalty card
 
 function makeStrip(stamps, needed, accentHex) {
-  const W = 1125, H = 432;
+  const W = 1125, H = 720;
   const [ar,ag,ab] = hexToRgb(accentHex);
-  const bg  = [245,237,224]; // cream
-  const lum = getLum(accentHex);
+  const bg   = [245,237,224];
+  const cols = 5, rows = 2;
 
-  // Stamp size and layout
-  const S      = 72;  // stamp icon bounding box
-  const gap    = Math.floor((W - 80) / needed);
-  const totalW = (needed - 1) * gap;
-  const startX = Math.floor((W - totalW) / 2);
-  const stampY = Math.floor(H * 0.62); // vertical centre of stamp row
+  // Text zone clearance
+  const textZone = Math.floor(H * 0.33);
+  const zoneH    = H - textZone - 20;
 
-  // Bottom accent rule
-  const ruleY = H - 14;
+  // Stamp size — fit 5 across and 2 rows with comfortable padding
+  const S = Math.floor(Math.min(
+    (W - 100) / cols * 0.78,
+    (zoneH - 30) / rows * 0.82
+  ));
+  const R      = Math.floor(S / 2);
+  const colGap = Math.floor((W - 60) / cols);
+  const rowGap = Math.floor((zoneH - 20) / rows);
+  const startX = Math.floor((W - (cols - 1) * colGap) / 2);
+  const startY = textZone + Math.floor(rowGap * 0.35);
+  const ruleY  = H - 14;
 
-  function getStamp(px, py, i) {
-    const cx  = startX + i * gap;
-    const cy  = stampY;
-    const lx  = px - cx;
-    const ly  = py - cy;
-    const half = S / 2;
-
-    // Outer circle boundary
-    const dist2 = lx*lx + ly*ly;
-    const R     = half;
-
-    if (dist2 > R*R) return null;
-
-    const filled = i < stamps;
-
-    if (filled) {
-      // Filled stamp: solid accent circle with cream cup cut-out
-      if (inCup(lx + half, ly + half, S)) {
-        // Cup shape: render in cream (punched out of accent)
-        return [...bg, 255];
-      }
+  function getStamp(px, py, idx) {
+    const row = Math.floor(idx / cols);
+    const col = idx % cols;
+    const cx  = startX + col * colGap;
+    const cy  = startY + row * rowGap;
+    const lx  = px - cx, ly = py - cy;
+    const d2  = lx*lx + ly*ly;
+    if (d2 > R*R) return null;
+    if (idx < stamps) {
+      if (inCup(lx + R, ly + R, S)) return [...bg, 255];
       return [ar,ag,ab,255];
     } else {
-      // Empty stamp: faint accent circle outline only
       const innerR = R - 4;
-      if (dist2 >= innerR*innerR) return [ar,ag,ab,90]; // thin ring
-      return null; // transparent interior — shows bg
+      if (d2 >= innerR*innerR) return [ar,ag,ab,75];
+      return null;
     }
   }
 
   return makePng(W, H, (px, py) => {
-    // Bottom rule
     if (py >= ruleY) return [ar,ag,ab,255];
-
-    // Stamps
     for (let i = 0; i < needed; i++) {
       const hit = getStamp(px, py, i);
       if (hit) return hit;
     }
-
     return [...bg, 255];
   });
 }
