@@ -2,6 +2,10 @@
 // Vercel serverless function — all secrets live here, never in the browser
 // Handles: save-settings, get-settings, create-pass, add-stamp, redeem, get-customer
 
+export const config = {
+  api: { bodyParser: false },  // we parse the body manually
+};
+
 export default async function handler(req, res) {
 
   // ── CORS ─────────────────────────────────────────────────────────────
@@ -10,6 +14,24 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'method not allowed' });
+
+  // ── PARSE BODY ────────────────────────────────────────────────────────
+  // Vercel doesn't auto-parse JSON for ES module handlers — do it manually.
+  let action, payload;
+  try {
+    const raw  = await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => data += chunk);
+      req.on('end',  () => resolve(data));
+      req.on('error', reject);
+    });
+    const body = JSON.parse(raw || '{}');
+    action  = body.action;
+    payload = body.payload || {};
+  } catch (e) {
+    return res.status(400).json({ error: 'invalid JSON body' });
+  }
+  if (!action) return res.status(400).json({ error: 'action required' });
 
   // ── SECRETS (Vercel env vars only — never in browser) ────────────────
   const SUPABASE_URL     = process.env.SUPABASE_URL;
