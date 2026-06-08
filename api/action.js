@@ -1,5 +1,6 @@
 // api/action.js — Lucky Cup serverless function
 // All secrets live here. Browser never sees them.
+import zlib from 'zlib';
 
 export const config = {
   api: { bodyParser: false },
@@ -82,24 +83,94 @@ export default async function handler(req, res) {
     return rows?.[0] || null;
   }
 
-  // ── IMAGE URL HELPER ──────────────────────────────────────────────────
-  function imageUrl(type, params = {}) {
-    if (!SITE_URL) return null;
-    const qs = new URLSearchParams({ type, ...params }).toString();
-    return `${SITE_URL}/api/image?${qs}`;
+  // ── INLINE PNG GENERATOR ─────────────────────────────────────────────
+  // Generates strip + logo as base64 data URIs directly — no external
+  // URL fetch needed. WalletWallet gets image bytes inline, always works.
+
+  const _zlib = zlib;
+
+  const _CRC = (() => {
+    const t=new Uint32Array(256);
+    for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=(c&1)?0xEDB88320^(c>>>1):c>>>1;t[i]=c;}
+    return t;
+  })();
+
+  function _crc(buf){let c=0xFFFFFFFF;for(const b of buf)c=_CRC[(c^b)&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+
+  function _png(W,H,gp){
+    const rowLen=1+W*4,raw=Buffer.alloc(H*rowLen);
+    for(let y=0;y<H;y++){
+      raw[y*rowLen]=0;
+      for(let x=0;x<W;x++){
+        const[r,g,b,a]=gp(x,y),o=y*rowLen+1+x*4;
+        raw[o]=r;raw[o+1]=g;raw[o+2]=b;raw[o+3]=a;
+      }
+    }
+    const cmp=_zlib.deflateSync(raw,{level:6});
+    function ck(type,data){
+      const tb=Buffer.from(type,'ascii'),cb=Buffer.concat([tb,data]);
+      const lb=Buffer.alloc(4);lb.writeUInt32BE(data.length);
+      const rb=Buffer.alloc(4);rb.writeUInt32BE(_crc(cb));
+      return Buffer.concat([lb,tb,data,rb]);
+    }
+    const ih=Buffer.alloc(13);ih.writeUInt32BE(W,0);ih.writeUInt32BE(H,4);ih[8]=8;ih[9]=6;
+    return 'data:image/png;base64,'+Buffer.concat([
+      Buffer.from([137,80,78,71,13,10,26,10]),ck('IHDR',ih),ck('IDAT',cmp),ck('IEND',Buffer.alloc(0))
+    ]).toString('base64');
   }
+
+  function _rgb(hex){const c=hex.replace('#','');return[parseInt(c.slice(0,2),16),parseInt(c.slice(2,4),16),parseInt(c.slice(4,6),16)];}
+
+  function _cup(lx,ly,S){
+    const s=S/44,x=lx/s,y=ly/s;
+    const rD=((x-22)/11)**2+((y-16)/3.5)**2;
+    const sD=((x-22)/14)**2+((y-34)/3)**2;
+    const hD=((x-35)/5)**2+((y-25)/6)**2;
+    const hI=((x-35)/3)**2+((y-25)/4)**2;
+    return rD<=1.0||(y>=16&&y<=32&&x>=(11-(y-16)*0.06)&&x<=(33+(y-16)*0.06))||(hD<=1.0&&x>=35&&hI>1.0)||sD<=1.0;
+  }
+
+  function makeStripDataUri(stamps,needed,accentHex,versionN){
+    const W=1125,H=369,[ar,ag,ab]=_rgb(accentHex),bg=[245,237,224];
+    const cols=5,rows=2,padX=80,padTop=24,padBot=20;
+    const gapX=Math.floor((W-padX*2)/cols),gapY=Math.floor((H-padTop-padBot)/rows);
+    const R=Math.floor(Math.min(gapX,gapY)*0.44),S=R*2;
+    const startX=padX+Math.floor(gapX/2),startY=padTop+Math.floor(gapY/2);
+    const ruleY=H-10,vB=(versionN%200)+28;
+    function gs(px,py,i){
+      const row=Math.floor(i/cols),col=i%cols;
+      const cx=startX+col*gapX,cy=startY+row*gapY;
+      const lx=px-cx,ly=py-cy,d2=lx*lx+ly*ly;
+      if(d2>R*R)return null;
+      if(i<stamps){if(_cup(lx+R,ly+R,S))return[...bg,255];return[ar,ag,ab,255];}
+      else{const iR=R-4;if(d2>=iR*iR)return[ar,ag,ab,80];return null;}
+    }
+    return _png(W,H,(px,py)=>{
+      if(px<3&&py<3)return[bg[0],bg[1],vB,255];
+      if(py>=ruleY)return[ar,ag,ab,255];
+      for(let i=0;i<needed;i++){const h=gs(px,py,i);if(h)return h;}
+      return[...bg,255];
+    });
+  }
+
+  function makeLogoDataUri(accentHex){
+    const W=160,H=50,[ar,ag,ab]=_rgb(accentHex),r=8;
+    return _png(W,H,(px,py)=>{
+      const ic=(px<r&&py<r&&(px-r)**2+(py-r)**2>r*r)||(px>W-r&&py<r&&(px-(W-r))**2+(py-r)**2>r*r)||(px<r&&py>H-r&&(px-r)**2+(py-(H-r))**2>r*r)||(px>W-r&&py>H-r&&(px-(W-r))**2+(py-(H-r))**2>r*r);
+      return ic?[0,0,0,0]:[ar,ag,ab,255];
+    });
+  }
+
 
   // ── WALLETWALLET HELPERS ──────────────────────────────────────────────
   function buildPassBody(customer, s, stamps) {
     const needed     = STAMPS_NEEDED;
     const isComplete = stamps >= needed;
     const accent     = s.accent || '#c94f2b';
-    const bust       = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-
-    const stripUrl = imageUrl('strip', {
-      stamps, needed, accent, name: s.cafe_name, v: bust,
-    });
-    const logoUrl = imageUrl('logo', { accent, name: s.cafe_name });
+    // Generate images inline as data URIs — no external fetch, always works
+    const versionN   = Date.now() % 100000;
+    const stripUrl   = makeStripDataUri(stamps, needed, accent, versionN);
+    const logoUrl    = makeLogoDataUri(accent);
 
     return {
       barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
