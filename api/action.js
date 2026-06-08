@@ -80,6 +80,9 @@ export default async function handler(req, res) {
     const stampIcon  = s.stamp || '☕';
     const accent     = s.accent || '#c94f2b';
 
+    // Unique token on every call — busts WalletWallet's image cache
+    const bust = `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+
     // Pro image URLs — generated fresh on every update
     const imgParams  = {
       accent:  accent,
@@ -87,10 +90,11 @@ export default async function handler(req, res) {
       stamp:   stampIcon,
       stamps:  stamps,
       needed:  needed,
+      v:       bust,       // cache-buster
     };
     const stripUrl = imageUrl('strip', imgParams);
-    const logoUrl  = imageUrl('logo',  { accent, name: s.cafe_name });
-    const iconUrl  = imageUrl('icon',  { accent, name: s.cafe_name });
+    const logoUrl  = imageUrl('logo',  { accent, name: s.cafe_name, v: bust });
+    const iconUrl  = imageUrl('icon',  { accent, name: s.cafe_name, v: bust });
 
     return {
       barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
@@ -126,8 +130,8 @@ export default async function handler(req, res) {
           // We include a timestamp so it's always unique, even if stamps didn't change.
           label:         'Last update',
           value:         isComplete
-            ? `🎉 Free coffee ready! Updated ${new Date().toISOString()}`
-            : `${stamps} of ${needed} stamps · ${new Date().toISOString()}`,
+            ? `🎉 Free coffee ready! ${Date.now()}-${Math.random().toString(36).slice(2,6)}`
+            : `${stamps}/${needed} · ${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
           changeMessage: isComplete
             ? `🎉 Free coffee earned at ${s.cafe_name}!`
             : `${s.cafe_name}: stamp added — ${stamps} of ${needed}`,

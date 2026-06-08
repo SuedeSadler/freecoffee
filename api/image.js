@@ -169,7 +169,7 @@ export default function handler(req, res) {
   // Return SVG — WalletWallet accepts SVG data URIs but we serve it
   // as a URL so it must be publicly accessible and return image/svg+xml
   res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.status(200).send(svg);
 }
 
