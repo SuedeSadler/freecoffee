@@ -131,12 +131,38 @@ export default async function handler(req, res) {
   }
 
   function makeStripDataUri(stamps,needed,accentHex,versionN){
-    const W=1125,H=369,[ar,ag,ab]=_rgb(accentHex),bg=[26,26,26]; // dark bg matches pass
+    const W=1125,H=369,[ar,ag,ab]=_rgb(accentHex),bg=[26,26,26];
+    const ruleY=H-10,vB=(versionN%200)+28;
+    const isComplete=stamps>=needed;
+
+    // ── FREE COFFEE state — large centered cup with celebration ring ──
+    if(isComplete){
+      const cx=W/2,cy=(H-10)/2;
+      const bigS=180,bigR=90;
+      function inRing(px,py){const d=Math.sqrt((px-cx)**2+(py-cy)**2);return d>=bigR+12&&d<=bigR+28;}
+      function inDot(px,py){
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4,sx=cx+Math.cos(a)*(bigR+48),sy=cy+Math.sin(a)*(bigR+48);
+          if((px-sx)**2+(py-sy)**2<=36)return true;
+        }
+        return false;
+      }
+      return _png(W,H,(px,py)=>{
+        if(px<3&&py<3)return[bg[0],bg[1],vB,255];
+        if(py>=ruleY)return[ar,ag,ab,180];
+        const dx=px-cx,dy=py-cy,d2=dx*dx+dy*dy;
+        if(d2<=bigR*bigR){if(_cup(dx+bigR,dy+bigR,bigS))return[...bg,255];return[ar,ag,ab,255];}
+        if(inRing(px,py))return[ar,ag,ab,160];
+        if(inDot(px,py))return[ar,ag,ab,200];
+        return[...bg,255];
+      });
+    }
+
+    // ── NORMAL state — 2 rows of 5 stamp cups ────────────────────────
     const cols=5,rows=2,padX=80,padTop=24,padBot=20;
     const gapX=Math.floor((W-padX*2)/cols),gapY=Math.floor((H-padTop-padBot)/rows);
     const R=Math.floor(Math.min(gapX,gapY)*0.44),S=R*2;
     const startX=padX+Math.floor(gapX/2),startY=padTop+Math.floor(gapY/2);
-    const ruleY=H-10,vB=(versionN%200)+28;
     function gs(px,py,i){
       const row=Math.floor(i/cols),col=i%cols;
       const cx=startX+col*gapX,cy=startY+row*gapY;
@@ -147,7 +173,7 @@ export default async function handler(req, res) {
     }
     return _png(W,H,(px,py)=>{
       if(px<3&&py<3)return[bg[0],bg[1],vB,255];
-      if(py>=ruleY)return[ar,ag,ab,180]; // softer rule on dark
+      if(py>=ruleY)return[ar,ag,ab,180];
       for(let i=0;i<needed;i++){const h=gs(px,py,i);if(h)return h;}
       return[...bg,255];
     });
