@@ -203,6 +203,53 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    // ── TEST UPDATE (temporary — tests WalletWallet PUT directly) ────
+    if (action === 'test-update') {
+      const { customerId } = payload || {};
+      if (!customerId) return res.status(400).json({ error: 'customerId required' });
+
+      const customer = await getCustomer(customerId);
+      if (!customer)  return res.status(404).json({ error: 'customer not found' });
+
+      const s = await getSettings();
+      const cafeSettings = {
+        cafe_name: s?.cafe_name || customer.cafe_name,
+        accent:    s?.accent    || customer.accent,
+        stamp:     s?.stamp     || '☕',
+      };
+
+      const passBody = buildPassBody(customer, cafeSettings, customer.stamps || 0);
+
+      // Log what we're sending
+      console.log('[test-update] serial:', customer.serial_number);
+      console.log('[test-update] barcodeValue:', passBody.barcodeValue);
+      console.log('[test-update] stripURL:', passBody.stripURL);
+
+      const r = await fetch(`https://api.walletwallet.dev/api/pkpass/${customer.serial_number}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${WALLETWALLET_KEY}`,
+        },
+        body: JSON.stringify(passBody),
+      });
+
+      const text = await r.text();
+      let json;
+      try { json = JSON.parse(text); } catch { json = { raw: text }; }
+
+      return res.status(200).json({
+        ww_status:    r.status,
+        ww_ok:        r.ok,
+        ww_response:  json,
+        serial:       customer.serial_number,
+        stamps:       customer.stamps,
+        barcodeValue: passBody.barcodeValue,
+        stripURL:     passBody.stripURL || null,
+        logoURL:      passBody.logoURL  || null,
+      });
+    }
+
     // ── DEBUG (temporary — remove after confirming SITE_URL works) ───
     if (action === 'debug') {
       return res.status(200).json({
