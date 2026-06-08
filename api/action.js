@@ -20,11 +20,145 @@ export default async function handler(req, res) {
   // Base URL of your Vercel deployment — used to build the QR code link
   const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
 
-  // Build image endpoint URLs for Pro pass features
-  function imageUrl(type, params = {}) {
-    if (!SITE_URL) return null;
-    const qs = new URLSearchParams({ type, ...params }).toString();
-    return `${SITE_URL}/api/image?${qs}`;
+  // ── PASS IMAGE GENERATORS ────────────────────────────────────────
+  // Generate PNG data URIs directly — no external dependencies,
+  // no caching issues, no SVG format rejection from WalletWallet.
+
+  function hexToRgb(hex) {
+    const c = hex.replace('#','');
+    return [
+      parseInt(c.slice(0,2),16),
+      parseInt(c.slice(2,4),16),
+      parseInt(c.slice(4,6),16),
+    ];
+  }
+
+  function getLum(hex) {
+    const [r,g,b] = hexToRgb(hex).map(c => {
+      c /= 255;
+      return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+    });
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  }
+
+  // Build a minimal valid PNG from raw RGBA pixel data
+  function buildPng(width, height, getPixel) {
+    // Inflate-store each row (no compression, just stored blocks)
+    function adler32(data) {
+      let s1 = 1, s2 = 0;
+      for (const b of data) { s1 = (s1+b)%65521; s2 = (s2+s1)%65521; }
+      return (s2<<16)|s1;
+    }
+    function crc32(data) {
+      let c = 0xFFFFFFFF;
+      const t = new Uint32Array(256);
+      for (let i=0;i<256;i++){let v=i;for(let k=0;k<8;k++)v=v&1?0xEDB88320^(v>>>1):v>>>1;t[i]=v;}
+      for (const b of data) c=t[(c^b)&0xFF]^(c>>>8);
+      return (c^0xFFFFFFFF)>>>0;
+    }
+    function u32be(n){return [n>>>24,(n>>>16)&255,(n>>>8)&255,n&255];}
+    function u16le(n){return [n&255,(n>>8)&255];}
+
+    const raw = [];
+    for (let y=0;y<height;y++){
+      raw.push(0); // filter byte
+      for (let x=0;x<width;x++){
+        const [r,g,b,a]=getPixel(x,y);
+        raw.push(r,g,b,a);
+      }
+    }
+
+    // zlib store (method=8, no compression)
+    const zlib = [];
+    zlib.push(0x78,0x01); // header
+    let off = 0;
+    while (off < raw.length) {
+      const chunk = raw.slice(off, off+65535);
+      const last  = off+chunk.length >= raw.length ? 1 : 0;
+      zlib.push(last);
+      zlib.push(...u16le(chunk.length));
+      zlib.push(...u16le(~chunk.length & 0xFFFF));
+      zlib.push(...chunk);
+      off += chunk.length;
+    }
+    const ad = adler32(raw);
+    zlib.push(...u32be(ad));
+
+    function chunk(type, data){
+      const tc = [...type].map(c=>c.charCodeAt(0));
+      const cd = [...data];
+      const crc = crc32([...tc,...cd]);
+      return [...u32be(cd.length),...tc,...cd,...u32be(crc)];
+    }
+
+    const sig   = [137,80,78,71,13,10,26,10];
+    const IHDR  = chunk('IHDR',[...u32be(width),...u32be(height),8,2,0,0,0]);
+    const IDAT  = chunk('IDAT',zlib);
+    const IEND  = chunk('IEND',[]);
+    const bytes = new Uint8Array([...sig,...IHDR,...IDAT,...IEND]);
+    return Buffer.from(bytes).toString('base64');
+  }
+
+  function makeStripDataUri(stamps, needed, accentHex, cafeName, stampIcon) {
+    const W = 640, H = 210;
+    const [ar,ag,ab] = hexToRgb(accentHex);
+    const lum        = getLum(accentHex);
+    const onAccent   = lum > 0.35 ? [26,26,26] : [255,255,255];
+
+    // Background: cream #f5ede0
+    const bg = [245,237,224];
+
+    // Dot layout
+    const dotR    = 14;
+    const spacing = Math.floor((W - 40) / needed);
+    const startX  = 20 + Math.floor(spacing/2);
+    const dotY    = Math.floor(H * 0.62);
+
+    function inDot(x, y, i) {
+      const cx = startX + i * spacing;
+      const dx = x - cx, dy = y - dotY;
+      return dx*dx + dy*dy <= dotR*dotR;
+    }
+
+    const png = buildPng(W, H, (x, y) => {
+      // Accent top bar (8px)
+      if (y < 8) return [...[ar,ag,ab], 255];
+
+      // Check each dot
+      for (let i = 0; i < needed; i++) {
+        if (inDot(x, y, i)) {
+          if (i < stamps) return [...[ar,ag,ab], 255];      // filled
+          else            return [...[ar,ag,ab], 46];        // empty (faded)
+        }
+      }
+
+      // Background
+      return [...bg, 255];
+    });
+
+    return `data:image/png;base64,${png}`;
+  }
+
+  function makeLogoDataUri(accentHex) {
+    const W = 120, H = 120;
+    const [ar,ag,ab] = hexToRgb(accentHex);
+    const lum        = getLum(accentHex);
+    const [tr,tg,tb] = lum > 0.35 ? [26,26,26] : [255,255,255];
+
+    const png = buildPng(W, H, (x, y) => {
+      // Rounded rect background — approx corner radius 20
+      const r = 20;
+      const inCorner = (
+        (x < r && y < r && (x-r)*(x-r)+(y-r)*(y-r) > r*r) ||
+        (x > W-r && y < r && (x-(W-r))*(x-(W-r))+(y-r)*(y-r) > r*r) ||
+        (x < r && y > H-r && (x-r)*(x-r)+(y-(H-r))*(y-(H-r)) > r*r) ||
+        (x > W-r && y > H-r && (x-(W-r))*(x-(W-r))+(y-(H-r))*(y-(H-r)) > r*r)
+      );
+      if (inCorner) return [0,0,0,0];
+      return [...[ar,ag,ab], 255];
+    });
+
+    return `data:image/png;base64,${png}`;
   }
 
   const { action, payload } = req.body || {};
@@ -80,21 +214,10 @@ export default async function handler(req, res) {
     const stampIcon  = s.stamp || '☕';
     const accent     = s.accent || '#c94f2b';
 
-    // Unique token on every call — busts WalletWallet's image cache
-    const bust = `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
-
-    // Pro image URLs — generated fresh on every update
-    const imgParams  = {
-      accent:  accent,
-      name:    s.cafe_name,
-      stamp:   stampIcon,
-      stamps:  stamps,
-      needed:  needed,
-      v:       bust,       // cache-buster
-    };
-    const stripUrl = imageUrl('strip', imgParams);
-    const logoUrl  = imageUrl('logo',  { accent, name: s.cafe_name, v: bust });
-    const iconUrl  = imageUrl('icon',  { accent, name: s.cafe_name, v: bust });
+    // Generate PNG data URIs inline — no caching, no external fetch,
+    // guaranteed unique body on every call so WalletWallet always pushes.
+    const stripDataUri = makeStripDataUri(stamps, needed, accent, s.cafe_name, stampIcon);
+    const logoDataUri  = makeLogoDataUri(accent);
 
     return {
       barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
@@ -137,13 +260,12 @@ export default async function handler(req, res) {
             : `${s.cafe_name}: stamp added — ${stamps} of ${needed}`,
         },
       ],
-      // Pro features — cream background, visual strip, logo, icon
+      // Pro features — cream background, visual strip, logo
       color:            '#f5ede0',
       expirationDays:   365,
       sharingProhibited:true,
-      ...(stripUrl ? { stripURL: stripUrl } : {}),
-      ...(logoUrl  ? { logoURL:  logoUrl  } : {}),
-      ...(iconUrl  ? { iconURL:  iconUrl  } : {}),
+      stripURL:         stripDataUri,
+      logoURL:          logoDataUri,
     };
   }
 
