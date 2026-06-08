@@ -20,6 +20,13 @@ export default async function handler(req, res) {
   // Base URL of your Vercel deployment — used to build the QR code link
   const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
 
+  // Build image endpoint URLs for Pro pass features
+  function imageUrl(type, params = {}) {
+    if (!SITE_URL) return null;
+    const qs = new URLSearchParams({ type, ...params }).toString();
+    return `${SITE_URL}/api/image?${qs}`;
+  }
+
   const { action, payload } = req.body || {};
   if (!action) return res.status(400).json({ error: 'action required' });
 
@@ -69,10 +76,21 @@ export default async function handler(req, res) {
   // ── WALLETWALLET HELPERS ──────────────────────────────────────────────
   function buildPassBody(customer, s, stamps) {
     const needed     = STAMPS_NEEDED;
-    const filled     = (s.stamp || '☕').repeat(stamps);
-    const empty      = '·'.repeat(Math.max(0, needed - stamps));
-    const stampStr   = filled + empty;
     const isComplete = stamps >= needed;
+    const stampIcon  = s.stamp || '☕';
+    const accent     = s.accent || '#c94f2b';
+
+    // Pro image URLs — generated fresh on every update
+    const imgParams  = {
+      accent:  accent,
+      name:    s.cafe_name,
+      stamp:   stampIcon,
+      stamps:  stamps,
+      needed:  needed,
+    };
+    const stripUrl = imageUrl('strip', imgParams);
+    const logoUrl  = imageUrl('logo',  { accent, name: s.cafe_name });
+    const iconUrl  = imageUrl('icon',  { accent, name: s.cafe_name });
 
     return {
       barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
@@ -81,17 +99,20 @@ export default async function handler(req, res) {
       organizationName: s.cafe_name,
       description:      'Loyalty card',
       primaryFields: [{
-        label: 'STAMPS',
-        value: stampStr,
-        changeMessage: isComplete
-          ? `🎉 Free coffee earned at ${s.cafe_name}!`
-          : `Stamp added — ${stamps} of ${needed}`,
+        label: 'MEMBER',
+        value: customer.name,
       }],
       secondaryFields: [
-        { label: 'MEMBER', value: customer.name },
+        {
+          label: 'STAMPS',
+          value: `${stamps} of ${needed}`,
+          changeMessage: isComplete
+            ? `🎉 Free coffee earned at ${s.cafe_name}!`
+            : `Stamp added — you now have %@ stamps`,
+        },
         {
           label: isComplete ? 'REWARD' : 'TO GO',
-          value: isComplete ? 'FREE COFFEE' : `${needed - stamps} more`,
+          value: isComplete ? 'FREE COFFEE ☕' : `${needed - stamps} more`,
         },
       ],
       backFields: [
@@ -108,10 +129,13 @@ export default async function handler(req, res) {
           changeMessage: '%@',
         },
       ],
-      colorPreset:       'dark',
-      expirationDays:    365,
-      sharingProhibited: true,
-      ...(s.accent ? { color: s.accent } : {}),
+      // Pro features — cream background, visual strip, logo, icon
+      color:            '#f5ede0',
+      expirationDays:   365,
+      sharingProhibited:true,
+      ...(stripUrl ? { stripURL: stripUrl } : {}),
+      ...(logoUrl  ? { logoURL:  logoUrl  } : {}),
+      ...(iconUrl  ? { iconURL:  iconUrl  } : {}),
     };
   }
 
