@@ -749,13 +749,21 @@ async function checkCPin() {
 // ── ADD STAMP ─────────────────
 async function doStamp() {
   if (!customer) return;
+
+  // use cPin (just verified) rather than STAFF_PIN which may be stale
+  const pinToSend = cPin || STAFF_PIN;
+  if (!pinToSend) {
+    showStampError('no pin entered · please enter your staff pin above');
+    return;
+  }
+
   setState('stamping');
   document.getElementById('sfText').textContent = 'adding stamp…';
 
   try {
     const result = await apiCall('add-stamp', {
       customerId: customer.id,
-      pin:        STAFF_PIN,
+      pin:        pinToSend,
     });
 
     const isWon = result.completed;
@@ -771,7 +779,7 @@ async function doStamp() {
 
   } catch (err) {
     setState('customer');
-    alert(err.message === 'already stamped today'
+    showStampError(err.message === 'already stamped today'
       ? 'already stamped today · one stamp per customer per day'
       : `stamp failed: ${err.message}`);
   }
@@ -780,7 +788,7 @@ async function doStamp() {
 // ── REDEEM ────────────────
 async function doRedeem() {
   if (!customer) return;
-  if (!confirm(`redeem free coffee for ${customer.name}? this will reset their stamp card to 0.`)) return;
+  const pinToSend = cPin || STAFF_PIN;
 
   setState('stamping');
   document.getElementById('sfText').textContent = 'redeeming…';
@@ -788,7 +796,7 @@ async function doRedeem() {
   try {
     await apiCall('redeem', {
       customerId: customer.id,
-      pin:        STAFF_PIN,
+      pin:        pinToSend,
     });
 
     document.getElementById('doneIcon').textContent  = '☕';
@@ -797,8 +805,33 @@ async function doRedeem() {
     setState('done');
   } catch (err) {
     setState('customer');
-    alert(`redeem failed: ${err.message}`);
+    showStampError(`redeem failed: ${err.message}`);
   }
+}
+
+// Show error on screen (alert unreliable on mobile)
+function showStampError(msg) {
+  let el = document.getElementById('stampError');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'stampError';
+    el.style.cssText = `
+      background: rgba(224,85,85,0.12);
+      border: 1px solid rgba(224,85,85,0.4);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 9px;
+      color: #e05555;
+      letter-spacing: 0.08em;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    `;
+    const btn = document.getElementById('btnStamp');
+    btn.parentNode.insertBefore(el, btn);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
 function newScan() {
