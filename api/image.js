@@ -96,33 +96,113 @@ function getLum(hex) {
   }, 0);
 }
 
-// ── STRIP IMAGE ───────────────────────────────────────────────────
-// 1024×312px — store-card strip, cream bg, accent dots
+// ── COFFEE CUP STAMP ──────────────────────────────────────────────
+// Returns true if pixel (lx, ly) is part of the coffee cup icon
+// within a local bounding box of size S×S centred at (0,0).
+function inCup(lx, ly, S) {
+  const s = S / 44; // scale factor (designed at 44px)
+  const x = lx / s;
+  const y = ly / s;
+  const W = 44, H = 44;
 
-function makeStrip(stamps, needed, accentHex) {
-  const W = 1024, H = 312;
-  const [ar,ag,ab] = hexToRgb(accentHex);
-  const bg = [245,237,224];
+  // Steam — two wavy lines above cup
+  const steamLeft  = x >= 13 && x <= 15 && y >= 2  && y <= 9;
+  const steamRight = x >= 19 && x <= 21 && y >= 2  && y <= 9;
+  const steam = (steamLeft || steamRight) && (Math.floor(y) % 3 !== 1);
 
-  const dotR   = 18;
-  const gap    = Math.min(60, Math.floor((W - 80) / needed));
-  const totalW = (needed - 1) * gap;
-  const startX = Math.floor((W - totalW) / 2);
-  const dotY   = Math.floor(H * 0.60);
+  // Rim — thick ellipse across top of cup body
+  const rimCx = 22, rimCy = 16, rimRx = 11, rimRy = 3.5;
+  const rimD = ((x-rimCx)/rimRx)**2 + ((y-rimCy)/rimRy)**2;
+  const rim = rimD <= 1.0 && y >= rimCy - rimRy;
 
-  function inDot(x, y, i) {
-    const cx = startX + i * gap;
-    return (x-cx)*(x-cx)+(y-dotY)*(y-dotY) <= dotR*dotR;
+  // Cup body — filled trapezoid
+  const bodyTop = 16, bodyBot = 32;
+  if (y >= bodyTop && y <= bodyBot) {
+    const t     = (y - bodyTop) / (bodyBot - bodyTop);
+    const left  = 11 + t * 1.5;
+    const right = 33 - t * 1.5;
+    if (x >= left && x <= right) {
+      // Body is solid (stamp style)
+      if (y <= bodyBot) return true;
+    }
   }
 
-  return makePng(W, H, (x, y) => {
-    if (y < 10)                   return [ar,ag,ab,255];   // accent bar
-    for (let i=0;i<needed;i++) {
-      if (inDot(x,y,i))           return i < stamps
-                                    ? [ar,ag,ab,255]       // filled dot
-                                    : [ar,ag,ab,50];       // empty dot
+  // Handle — C shape on right side
+  const hCx = 35, hCy = 25, hRx = 5, hRy = 6;
+  const hD  = ((x-hCx)/hRx)**2 + ((y-hCy)/hRy)**2;
+  const handle = hD <= 1.0 && x >= hCx;
+  // hollow handle interior
+  const hInner = ((x-hCx)/(hRx-2))**2 + ((y-hCy)/(hRy-2))**2;
+  const handleRing = handle && hInner > 1.0;
+
+  // Saucer — filled ellipse at bottom
+  const sCx = 22, sCy = 34, sRx = 14, sRy = 3;
+  const sD  = ((x-sCx)/sRx)**2 + ((y-sCy)/sRy)**2;
+  const saucer = sD <= 1.0;
+
+  return steam || rim || (y >= 16 && y <= 32 && x >= 11 - (y-16)*0.06 && x <= 33 + (y-16)*0.06) || handleRing || saucer;
+}
+
+// ── STRIP IMAGE ───────────────────────────────────────────────────
+// Apple Wallet strip: 1125×432px @3x (375×144pt)
+
+function makeStrip(stamps, needed, accentHex) {
+  const W = 1125, H = 432;
+  const [ar,ag,ab] = hexToRgb(accentHex);
+  const bg  = [245,237,224]; // cream
+  const lum = getLum(accentHex);
+
+  // Stamp size and layout
+  const S      = 72;  // stamp icon bounding box
+  const gap    = Math.floor((W - 80) / needed);
+  const totalW = (needed - 1) * gap;
+  const startX = Math.floor((W - totalW) / 2);
+  const stampY = Math.floor(H * 0.62); // vertical centre of stamp row
+
+  // Bottom accent rule
+  const ruleY = H - 14;
+
+  function getStamp(px, py, i) {
+    const cx  = startX + i * gap;
+    const cy  = stampY;
+    const lx  = px - cx;
+    const ly  = py - cy;
+    const half = S / 2;
+
+    // Outer circle boundary
+    const dist2 = lx*lx + ly*ly;
+    const R     = half;
+
+    if (dist2 > R*R) return null;
+
+    const filled = i < stamps;
+
+    if (filled) {
+      // Filled stamp: solid accent circle with cream cup cut-out
+      if (inCup(lx + half, ly + half, S)) {
+        // Cup shape: render in cream (punched out of accent)
+        return [...bg, 255];
+      }
+      return [ar,ag,ab,255];
+    } else {
+      // Empty stamp: faint accent circle outline only
+      const innerR = R - 4;
+      if (dist2 >= innerR*innerR) return [ar,ag,ab,90]; // thin ring
+      return null; // transparent interior — shows bg
     }
-    return [...bg,255];                                    // cream bg
+  }
+
+  return makePng(W, H, (px, py) => {
+    // Bottom rule
+    if (py >= ruleY) return [ar,ag,ab,255];
+
+    // Stamps
+    for (let i = 0; i < needed; i++) {
+      const hit = getStamp(px, py, i);
+      if (hit) return hit;
+    }
+
+    return [...bg, 255];
   });
 }
 
