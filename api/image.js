@@ -154,20 +154,20 @@ function makeStrip(stamps, needed, accentHex) {
   const bg   = [245,237,224];
   const cols = 5, rows = 2;
 
-  // Text zone clearance
-  const textZone = Math.floor(H * 0.33);
-  const zoneH    = H - textZone - 20;
+  // Full height used for stamps — name is in headerFields, not over the strip
+  const pad    = 40;  // padding top/bottom
+  const zoneH  = H - pad * 2;
 
-  // Stamp size — fit 5 across and 2 rows with comfortable padding
+  // Stamp size — fill the space
   const S = Math.floor(Math.min(
-    (W - 100) / cols * 0.78,
-    (zoneH - 30) / rows * 0.82
+    (W - 100) / cols * 0.82,
+    (zoneH - 20) / rows * 0.88
   ));
   const R      = Math.floor(S / 2);
   const colGap = Math.floor((W - 60) / cols);
-  const rowGap = Math.floor((zoneH - 20) / rows);
+  const rowGap = Math.floor((zoneH) / rows);
   const startX = Math.floor((W - (cols - 1) * colGap) / 2);
-  const startY = textZone + Math.floor(rowGap * 0.35);
+  const startY = pad + Math.floor(rowGap * 0.4);
   const ruleY  = H - 14;
 
   function getStamp(px, py, idx) {

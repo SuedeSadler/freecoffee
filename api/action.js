@@ -107,10 +107,19 @@ export default async function handler(req, res) {
       logoText:         s.cafe_name,
       organizationName: s.cafe_name,
       description:      'Loyalty card',
-      primaryFields: [{
+      // headerFields: top-right corner — always visible, never overlaps strip
+      headerFields: [{
         label: 'MEMBER',
         value: customer.name,
       }],
+      // primaryFields: sits ON TOP of strip image — keep empty/minimal
+      // so it doesn't overlay the stamps. A zero-width space keeps
+      // Apple happy (requires at least one primary field with a value).
+      primaryFields: [{
+        label: ' ',
+        value: ' ',
+      }],
+      // secondaryFields: rendered BELOW the strip — stamp count + reward
       secondaryFields: [
         {
           label: 'STAMPS',
