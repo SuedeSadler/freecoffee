@@ -179,6 +179,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    // ── DEBUG (temporary — remove after confirming SITE_URL works) ───
+    if (action === 'debug') {
+      return res.status(200).json({
+        SITE_URL:      SITE_URL || '(not set)',
+        STAMPS_NEEDED: STAMPS_NEEDED,
+        has_supabase:  !!SUPABASE_URL,
+        has_ww:        !!WALLETWALLET_KEY,
+        has_pin:       !!STAFF_PIN,
+      });
+    }
+
     // ── VERIFY PIN (staff gate — lightweight PIN check) ────────────
     if (action === 'verify-pin') {
       const { pin } = payload || {};
@@ -239,16 +250,12 @@ export default async function handler(req, res) {
       const customer = await getCustomer(customerId);
       if (!customer)         return res.status(404).json({ error: 'customer not found' });
 
-      const today = new Date().toISOString().slice(0, 10);
-      if (customer.last_stamp_date === today) {
-        return res.status(429).json({ error: 'already stamped today' });
-      }
       if ((customer.stamps || 0) >= STAMPS_NEEDED) {
         return res.status(400).json({ error: 'already at max stamps — redeem first' });
       }
 
-      const s          = await getSettings();
-      const newStamps  = (customer.stamps || 0) + 1;
+      const s         = await getSettings();
+      const newStamps = (customer.stamps || 0) + 1;
       const cafeSettings = {
         cafe_name: s?.cafe_name || customer.cafe_name,
         accent:    s?.accent    || customer.accent,
@@ -262,9 +269,8 @@ export default async function handler(req, res) {
       );
 
       await updateCustomerRow(customerId, {
-        stamps:          newStamps,
-        last_stamp_date: today,
-        redeemed:        false,
+        stamps:   newStamps,
+        redeemed: false,
       });
 
       return res.status(200).json({

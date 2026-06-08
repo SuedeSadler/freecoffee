@@ -216,40 +216,7 @@ main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
 .win-banner-text { font-size: 9px; color: #4ca870; letter-spacing: 0.08em; line-height: 1.7; }
 .win-banner-title { font-size: 13px; font-weight: 700; color: #4ca870; margin-bottom: 2px; letter-spacing: -0.01em; }
 
-/* ── PIN BLOCK (stamp confirm) ── */
-.confirm-pin-block {
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.cpb-hd {
-  background: var(--base);
-  border-bottom: 1.5px solid var(--border);
-  padding: 8px 14px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.cpb-lbl  { font-size: 7px; letter-spacing: 0.18em; color: var(--muted); }
-.cpb-dots { display: flex; gap: 5px; }
-.cpb-dot  { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--border); }
-.cpb-dot.on { background: var(--accent); border-color: var(--accent); }
 
-.confirm-pin-grid { display: grid; grid-template-columns: repeat(3,1fr); }
-.cpk {
-  padding: 10px 4px; text-align: center;
-  font-size: 16px; font-weight: 500;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  color: var(--paper); background: var(--surface);
-  font-family: 'IBM Plex Mono', monospace; cursor: pointer;
-  transition: background 0.1s;
-  user-select: none;
-}
-.cpk:hover { background: #2a2a2a; }
-.cpk:active { background: var(--accent); color: #fff; }
-.cpk:nth-child(3n)    { border-right: none; }
-.cpk:nth-last-child(-n+3) { border-bottom: none; }
-.cpk.dim { color: var(--muted); }
 
 /* ── STAMP BUTTON ── */
 .btn-stamp {
@@ -311,19 +278,7 @@ main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
 .sf-text { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
 
 /* daily limit */
-.daily-warn {
-  background: rgba(232,160,48,0.08);
-  border: 1px solid rgba(232,160,48,0.3);
-  border-radius: var(--radius);
-  padding: 11px 14px;
-  font-size: 8px;
-  color: #e8a030;
-  letter-spacing: 0.08em;
-  line-height: 1.7;
-  margin-bottom: 12px;
-  display: none;
-}
-.daily-warn.visible { display: block; }
+
 </style>
 </head>
 <body>
@@ -420,11 +375,6 @@ main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
       </div>
     </div>
 
-    <!-- daily limit warning -->
-    <div class="daily-warn" id="dailyWarn">
-      ⚠ already stamped today · one stamp per customer per day
-    </div>
-
     <!-- progress -->
     <div class="prog-block">
       <div class="pb-top">
@@ -435,34 +385,7 @@ main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; }
       <div class="stamp-dots" id="stampDots"></div>
     </div>
 
-    <!-- confirm pin -->
-    <div class="confirm-pin-block">
-      <div class="cpb-hd">
-        <div class="cpb-lbl">staff pin required</div>
-        <div class="cpb-dots" id="cpbDots">
-          <div class="cpb-dot" id="cd0"></div>
-          <div class="cpb-dot" id="cd1"></div>
-          <div class="cpb-dot" id="cd2"></div>
-          <div class="cpb-dot" id="cd3"></div>
-        </div>
-      </div>
-      <div class="confirm-pin-grid">
-        <div class="cpk" onclick="cPinKey('1')">1</div>
-        <div class="cpk" onclick="cPinKey('2')">2</div>
-        <div class="cpk" onclick="cPinKey('3')">3</div>
-        <div class="cpk" onclick="cPinKey('4')">4</div>
-        <div class="cpk" onclick="cPinKey('5')">5</div>
-        <div class="cpk" onclick="cPinKey('6')">6</div>
-        <div class="cpk" onclick="cPinKey('7')">7</div>
-        <div class="cpk" onclick="cPinKey('8')">8</div>
-        <div class="cpk" onclick="cPinKey('9')">9</div>
-        <div class="cpk dim" onclick="cPinClear()">⌫</div>
-        <div class="cpk" onclick="cPinKey('0')">0</div>
-        <div class="cpk dim" onclick="cPinReset()">✕</div>
-      </div>
-    </div>
-
-    <button class="btn-stamp locked" id="btnStamp" onclick="doStamp()" disabled>
+    <button class="btn-stamp" id="btnStamp" onclick="doStamp()">
       <span>+ add stamp</span><span id="btnStampIcon">✦</span>
     </button>
     <button class="btn-redeem" id="btnRedeem" onclick="doRedeem()" style="display:none;">
@@ -547,9 +470,7 @@ function applyTheme() {
 
 // ── STATE ─────────────────────────────────────────
 let gatePin   = '';
-let cPin      = '';
 let customer  = null;
-let alreadyStampedToday = false;
 
 function setState(s) {
   document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
@@ -651,7 +572,6 @@ function renderCustomer() {
   const isWon   = stamps >= needed;
   const today   = new Date().toISOString().slice(0,10);
 
-  alreadyStampedToday = c.last_stamp_date === today;
 
   document.getElementById('ccName').textContent   = c.name;
   document.getElementById('ccId').textContent     = `#${c.id} · via ${new URLSearchParams(location.search).get('id') ? 'qr scan' : 'manual'}`;
@@ -677,73 +597,14 @@ function renderCustomer() {
   // win banner
   document.getElementById('winBanner').classList.toggle('visible', isWon);
 
-  // daily limit warning
-  document.getElementById('dailyWarn').classList.toggle('visible', alreadyStampedToday && !isWon);
-
-  // buttons
-  const canStamp = !isWon && !alreadyStampedToday;
+  // buttons — no second PIN needed, gate PIN already verified
   document.getElementById('btnStamp').style.display  = isWon ? 'none' : 'flex';
   document.getElementById('btnRedeem').style.display = isWon ? 'flex' : 'none';
-  document.getElementById('btnStamp').disabled = true;
-  document.getElementById('btnStamp').classList.add('locked');
-
-  // reset confirm pin
-  cPin = '';
-  renderCPin();
+  document.getElementById('btnStamp').disabled = isWon;
 }
 
 // ── CONFIRM PIN (stamp page) ──────────────────────
-function cPinKey(d) {
-  if (cPin.length < 4) {
-    cPin += d;
-    renderCPin();
-    if (cPin.length === 4) checkCPin();
-  }
-}
-function cPinClear() { cPin = cPin.slice(0,-1); renderCPin(); }
-function cPinReset() { cPin = ''; renderCPin(); }
 
-function renderCPin() {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById(`cd${i}`);
-    d.classList.toggle('on', i < cPin.length);
-  }
-}
-
-async function checkCPin() {
-  if (cPin.length < 4) return;
-
-  // verify server-side
-  try {
-    await apiCall('verify-pin', { pin: cPin });
-
-    // correct — update cached PIN and enable stamp button
-    STAFF_PIN = cPin;
-    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
-    localStorage.setItem('lc_settings', JSON.stringify({ ...cached, pin: cPin }));
-
-    const stamps = customer.stamps || 0;
-    const isWon  = stamps >= CONFIG.STAMPS_NEEDED;
-    if (!isWon && !alreadyStampedToday) {
-      document.getElementById('btnStamp').disabled = false;
-      document.getElementById('btnStamp').classList.remove('locked');
-    }
-  } catch (err) {
-    // wrong — flash and reset
-    ['cd0','cd1','cd2','cd3'].forEach(id => {
-      document.getElementById(id).style.background = '#e05555';
-      document.getElementById(id).style.borderColor = '#e05555';
-    });
-    setTimeout(() => {
-      cPin = '';
-      renderCPin();
-      ['cd0','cd1','cd2','cd3'].forEach(id => {
-        document.getElementById(id).style.background = '';
-        document.getElementById(id).style.borderColor = '';
-      });
-    }, 700);
-  }
-}
 
 
 // ── ADD STAMP ─────────────────
@@ -751,7 +612,7 @@ async function doStamp() {
   if (!customer) return;
 
   // use cPin (just verified) rather than STAFF_PIN which may be stale
-  const pinToSend = cPin || STAFF_PIN;
+  const pinToSend = STAFF_PIN;
   if (!pinToSend) {
     showStampError('no pin entered · please enter your staff pin above');
     return;
@@ -788,7 +649,7 @@ async function doStamp() {
 // ── REDEEM ────────────────
 async function doRedeem() {
   if (!customer) return;
-  const pinToSend = cPin || STAFF_PIN;
+  const pinToSend = STAFF_PIN;
 
   setState('stamping');
   document.getElementById('sfText').textContent = 'redeeming…';
