@@ -576,16 +576,32 @@ function renderGatePin() {
   }
 }
 
-function checkGatePin() {
-  if (gatePin === STAFF_PIN) {
-    // check for QR param
+async function checkGatePin() {
+  // Always verify PIN server-side — don't trust localStorage comparison
+  setState('stamping');
+  document.getElementById('sfText').textContent = 'verifying pin…';
+
+  try {
+    // Use a lightweight server-side check by calling get-settings with the pin.
+    // We piggyback on get-settings which is public, then do a real pin check
+    // via a dummy get-customer call that will fail on wrong pin before 404.
+    // Better: just try get-settings then verify pin with a dedicated check.
+    await apiCall('verify-pin', { pin: gatePin });
+
+    // PIN correct — cache it locally for the confirm-pin step
+    STAFF_PIN = gatePin;
+    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+    localStorage.setItem('lc_settings', JSON.stringify({ ...cached, pin: gatePin }));
+
     const urlId = new URLSearchParams(location.search).get('id');
     if (urlId) {
       loadCustomer(urlId);
     } else {
       setState('scan');
     }
-  } else {
+
+  } catch (err) {
+    setState('pin');
     document.getElementById('pinError').classList.add('visible');
     setTimeout(() => {
       gatePin = '';
@@ -694,16 +710,25 @@ function renderCPin() {
   }
 }
 
-function checkCPin() {
-  if (cPin === STAFF_PIN) {
+async function checkCPin() {
+  if (cPin.length < 4) return;
+
+  // verify server-side
+  try {
+    await apiCall('verify-pin', { pin: cPin });
+
+    // correct — update cached PIN and enable stamp button
+    STAFF_PIN = cPin;
+    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
+    localStorage.setItem('lc_settings', JSON.stringify({ ...cached, pin: cPin }));
+
     const stamps = customer.stamps || 0;
     const isWon  = stamps >= CONFIG.STAMPS_NEEDED;
-    const today  = new Date().toISOString().slice(0,10);
     if (!isWon && !alreadyStampedToday) {
       document.getElementById('btnStamp').disabled = false;
       document.getElementById('btnStamp').classList.remove('locked');
     }
-  } else {
+  } catch (err) {
     // wrong — flash and reset
     ['cd0','cd1','cd2','cd3'].forEach(id => {
       document.getElementById(id).style.background = '#e05555';

@@ -177,6 +177,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    // ── VERIFY PIN (staff gate — lightweight PIN check) ────────────
+    if (action === 'verify-pin') {
+      const { pin } = payload || {};
+      if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
+      return res.status(200).json({ success: true });
+    }
+
     // ── GET SETTINGS (public — signup + staff pages on load) ────────
     if (action === 'get-settings') {
       const s = await getSettings();
