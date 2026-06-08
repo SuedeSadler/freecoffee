@@ -1,14 +1,13 @@
-// api/action.js
-// Vercel serverless function — all secrets live here, never in the browser
-// Handles: save-settings, get-settings, create-pass, add-stamp, redeem, get-customer
+// api/action.js — Lucky Cup serverless function
+// All secrets live here. Browser never sees them.
 
 export const config = {
-  api: { bodyParser: false },  // we parse the body manually
+  api: { bodyParser: false },
 };
 
 export default async function handler(req, res) {
 
-  // ── CORS ─────────────────────────────────────────────────────────────
+  // ── CORS ──────────────────────────────────────────────────────────────
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,13 +15,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'method not allowed' });
 
   // ── PARSE BODY ────────────────────────────────────────────────────────
-  // Vercel doesn't auto-parse JSON for ES module handlers — do it manually.
   let action, payload;
   try {
-    const raw  = await new Promise((resolve, reject) => {
-      let data = '';
-      req.on('data', chunk => data += chunk);
-      req.on('end',  () => resolve(data));
+    const raw = await new Promise((resolve, reject) => {
+      let d = '';
+      req.on('data', c => d += c);
+      req.on('end',  () => resolve(d));
       req.on('error', reject);
     });
     const body = JSON.parse(raw || '{}');
@@ -33,33 +31,75 @@ export default async function handler(req, res) {
   }
   if (!action) return res.status(400).json({ error: 'action required' });
 
-  // ── SECRETS (Vercel env vars only — never in browser) ────────────────
+  // ── SECRETS ───────────────────────────────────────────────────────────
   const SUPABASE_URL     = process.env.SUPABASE_URL;
-  const SUPABASE_KEY     = process.env.SUPABASE_KEY;   // service role key
+  const SUPABASE_KEY     = process.env.SUPABASE_KEY;
   const WALLETWALLET_KEY = process.env.WALLETWALLET_KEY;
   const STAFF_PIN        = process.env.STAFF_PIN;
   const STAMPS_NEEDED    = parseInt(process.env.STAMPS_NEEDED || '10');
-  // Base URL of your Vercel deployment — used to build the QR code link
   const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
 
-  // ── IMAGE URL HELPER ──────────────────────────────────────────────
-  // api/image.js generates proper PNGs server-side using Node's zlib.
+  // ── SUPABASE HELPERS ──────────────────────────────────────────────────
+  async function sbFetch(path, opts = {}) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...opts,
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json',
+        'Prefer':        opts.prefer || '',
+        ...opts.headers,
+      },
+    });
+    const text = await r.text();
+    if (!r.ok) throw new Error(text || `supabase ${r.status}`);
+    return text ? JSON.parse(text) : null;
+  }
+
+  async function getCustomer(id) {
+    const rows = await sbFetch(`customers?id=eq.${encodeURIComponent(id)}&limit=1`);
+    return rows?.[0] || null;
+  }
+
+  async function createCustomerRow(data) {
+    return sbFetch('customers', {
+      method: 'POST',
+      prefer: 'return=representation',
+      body:   JSON.stringify(data),
+    });
+  }
+
+  async function updateCustomerRow(id, data) {
+    return sbFetch(`customers?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body:   JSON.stringify(data),
+    });
+  }
+
+  async function getSettings() {
+    const rows = await sbFetch('cafe_settings?id=eq.1&limit=1');
+    return rows?.[0] || null;
+  }
+
+  // ── IMAGE URL HELPER ──────────────────────────────────────────────────
   function imageUrl(type, params = {}) {
     if (!SITE_URL) return null;
     const qs = new URLSearchParams({ type, ...params }).toString();
     return `${SITE_URL}/api/image?${qs}`;
   }
 
-    function buildPassBody(customer, s, stamps) {
+  // ── WALLETWALLET HELPERS ──────────────────────────────────────────────
+  function buildPassBody(customer, s, stamps) {
     const needed     = STAMPS_NEEDED;
     const isComplete = stamps >= needed;
-    const stampIcon  = s.stamp || '☕';
     const accent     = s.accent || '#c94f2b';
+    const bust       = `${Date.now()}`;
 
-    // Cache-buster ensures WalletWallet re-fetches image on every update
-    const bust     = `${Date.now()}`;
-    const stripUrl = imageUrl('strip', { stamps, needed, accent, name: s.cafe_name, v: bust });
-    const logoUrl  = imageUrl('logo',  { accent, name: s.cafe_name });
+    const stripUrl = imageUrl('strip', {
+      stamps, needed, accent, name: s.cafe_name, v: bust,
+    });
+    const logoUrl = imageUrl('logo', { accent, name: s.cafe_name });
 
     return {
       barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
@@ -91,8 +131,6 @@ export default async function handler(req, res) {
         },
         { label: 'Member ID', value: customer.id },
         {
-          // Notification anchor — value must change on every update to fire a push.
-          // We include a timestamp so it's always unique, even if stamps didn't change.
           label:         'Last update',
           value:         isComplete
             ? `🎉 Free coffee ready! ${Date.now()}-${Math.random().toString(36).slice(2,6)}`
@@ -102,7 +140,6 @@ export default async function handler(req, res) {
             : `${s.cafe_name}: stamp added — ${stamps} of ${needed}`,
         },
       ],
-      // Pro features — cream background, visual strip, logo
       color:            '#f5ede0',
       expirationDays:   365,
       sharingProhibited:true,
@@ -136,146 +173,91 @@ export default async function handler(req, res) {
     return text ? JSON.parse(text) : null;
   }
 
-  // ════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════
   //  ACTIONS
-  // ════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════
 
   try {
 
+    // ── DEBUG ──────────────────────────────────────────────────────────
+    if (action === 'debug') {
+      return res.status(200).json({
+        SITE_URL:     SITE_URL || '(not set)',
+        STAMPS_NEEDED,
+        has_supabase: !!SUPABASE_URL,
+        has_ww:       !!WALLETWALLET_KEY,
+        has_pin:      !!STAFF_PIN,
+      });
+    }
 
-    // ── SAVE SETTINGS (setup page — PIN protected) ──────────────
+    // ── TEST UPDATE ────────────────────────────────────────────────────
+    if (action === 'test-update') {
+      const { customerId } = payload;
+      if (!customerId) return res.status(400).json({ error: 'customerId required' });
+      const customer = await getCustomer(customerId);
+      if (!customer)  return res.status(404).json({ error: 'customer not found' });
+      const s = await getSettings();
+      const passBody = buildPassBody(customer, s, customer.stamps || 0);
+      const r = await fetch(`https://api.walletwallet.dev/api/pkpass/${customer.serial_number}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WALLETWALLET_KEY}` },
+        body: JSON.stringify(passBody),
+      });
+      const text = await r.text();
+      let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
+      return res.status(200).json({ ww_status: r.status, ww_ok: r.ok, ww_response: json, serial: customer.serial_number, stamps: customer.stamps, stripURL: passBody.stripURL || null });
+    }
+
+    // ── VERIFY PIN ─────────────────────────────────────────────────────
+    if (action === 'verify-pin') {
+      const { pin } = payload;
+      if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
+      return res.status(200).json({ success: true });
+    }
+
+    // ── SAVE SETTINGS ──────────────────────────────────────────────────
     if (action === 'save-settings') {
-      const { pin, cafeName, accent, stamp, mode } = payload || {};
+      const { pin, cafeName, accent, stamp, mode } = payload;
       if (!cafeName)         return res.status(400).json({ error: 'cafeName required' });
       if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
 
-      // true upsert — insert or update in a single Supabase call
-      const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/cafe_settings`, {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/cafe_settings`, {
         method: 'POST',
         headers: {
-          'apikey':        SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type':  'application/json',
-          'Prefer':        'resolution=merge-duplicates',
+          'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
         },
         body: JSON.stringify({
-          id:         1,
-          cafe_name:  cafeName.trim(),
-          accent:     accent || '#c94f2b',
-          stamp:      stamp  || '☕',
-          mode:       mode   || 'dark',
-          updated_at: new Date().toISOString(),
+          id: 1, cafe_name: cafeName.trim(), accent: accent || '#c94f2b',
+          stamp: stamp || '☕', mode: mode || 'dark', updated_at: new Date().toISOString(),
         }),
       });
-      if (!upsertRes.ok) {
-        const t = await upsertRes.text();
-        throw new Error(t || `supabase upsert ${upsertRes.status}`);
-      }
-
+      if (!r.ok) throw new Error(await r.text() || `supabase ${r.status}`);
       return res.status(200).json({ success: true });
     }
 
-    // ── TEST UPDATE (temporary — tests WalletWallet PUT directly) ────
-    if (action === 'test-update') {
-      const { customerId } = payload || {};
-      if (!customerId) return res.status(400).json({ error: 'customerId required' });
-
-      const customer = await getCustomer(customerId);
-      if (!customer)  return res.status(404).json({ error: 'customer not found' });
-
-      const s = await getSettings();
-      const cafeSettings = {
-        cafe_name: s?.cafe_name || customer.cafe_name,
-        accent:    s?.accent    || customer.accent,
-        stamp:     s?.stamp     || '☕',
-      };
-
-      const passBody = buildPassBody(customer, cafeSettings, customer.stamps || 0);
-
-      // Log what we're sending
-      console.log('[test-update] serial:', customer.serial_number);
-      console.log('[test-update] barcodeValue:', passBody.barcodeValue);
-      console.log('[test-update] stripURL:', passBody.stripURL);
-
-      const r = await fetch(`https://api.walletwallet.dev/api/pkpass/${customer.serial_number}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${WALLETWALLET_KEY}`,
-        },
-        body: JSON.stringify(passBody),
-      });
-
-      const text = await r.text();
-      let json;
-      try { json = JSON.parse(text); } catch { json = { raw: text }; }
-
-      return res.status(200).json({
-        ww_status:    r.status,
-        ww_ok:        r.ok,
-        ww_response:  json,
-        serial:       customer.serial_number,
-        stamps:       customer.stamps,
-        barcodeValue: passBody.barcodeValue,
-        stripURL:     passBody.stripURL || null,
-        logoURL:      passBody.logoURL  || null,
-      });
-    }
-
-    // ── DEBUG (temporary — remove after confirming SITE_URL works) ───
-    if (action === 'debug') {
-      return res.status(200).json({
-        SITE_URL:      SITE_URL || '(not set)',
-        STAMPS_NEEDED: STAMPS_NEEDED,
-        has_supabase:  !!SUPABASE_URL,
-        has_ww:        !!WALLETWALLET_KEY,
-        has_pin:       !!STAFF_PIN,
-      });
-    }
-
-    // ── VERIFY PIN (staff gate — lightweight PIN check) ────────────
-    if (action === 'verify-pin') {
-      const { pin } = payload || {};
-      if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
-      return res.status(200).json({ success: true });
-    }
-
-    // ── GET SETTINGS (public — signup + staff pages on load) ────────
+    // ── GET SETTINGS ───────────────────────────────────────────────────
     if (action === 'get-settings') {
       const s = await getSettings();
       if (!s) return res.status(404).json({ error: 'not configured yet' });
-
-      // safe to return — no secrets in this table
-      return res.status(200).json({
-        cafeName: s.cafe_name,
-        accent:   s.accent,
-        stamp:    s.stamp,
-        mode:     s.mode,
-      });
+      return res.status(200).json({ cafeName: s.cafe_name, accent: s.accent, stamp: s.stamp, mode: s.mode });
     }
 
-    // ── CREATE PASS (customer sign-up) ──────────────────────────────
+    // ── CREATE PASS ────────────────────────────────────────────────────
     if (action === 'create-pass') {
-      const { id, name, email } = payload || {};
+      const { id, name, email } = payload;
       if (!id || !name) return res.status(400).json({ error: 'id and name required' });
 
-      // load settings from DB — source of truth
       const s = await getSettings();
       if (!s) return res.status(400).json({ error: 'cafe not configured yet' });
 
-      const cafeSettings = { cafe_name: s.cafe_name, accent: s.accent, stamp: s.stamp };
-      const passBody     = buildPassBody({ id, name }, cafeSettings, 0);
+      const passBody        = buildPassBody({ id, name }, s, 0);
       const { serial, buffer } = await wwPost('/api/pkpass', passBody);
 
       await createCustomerRow({
-        id,
-        name,
-        email:         email || null,
-        serial_number: serial,
-        stamps:        0,
-        accent:        s.accent,
-        cafe_name:     s.cafe_name,
-        mode:          s.mode,
+        id, name, email: email || null,
+        serial_number: serial, stamps: 0,
+        accent: s.accent, cafe_name: s.cafe_name, mode: s.mode,
       });
 
       res.setHeader('Content-Type',        'application/vnd.apple.pkpass');
@@ -284,18 +266,16 @@ export default async function handler(req, res) {
       return res.send(Buffer.from(buffer));
     }
 
-    // ── ADD STAMP ───────────────────────────────────────────────────
+    // ── ADD STAMP ──────────────────────────────────────────────────────
     if (action === 'add-stamp') {
-      const { customerId, pin } = payload || {};
+      const { customerId, pin } = payload;
       if (!customerId)       return res.status(400).json({ error: 'customerId required' });
       if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
 
       const customer = await getCustomer(customerId);
       if (!customer)         return res.status(404).json({ error: 'customer not found' });
-
-      if ((customer.stamps || 0) >= STAMPS_NEEDED) {
+      if ((customer.stamps || 0) >= STAMPS_NEEDED)
         return res.status(400).json({ error: 'already at max stamps — redeem first' });
-      }
 
       const s         = await getSettings();
       const newStamps = (customer.stamps || 0) + 1;
@@ -305,63 +285,38 @@ export default async function handler(req, res) {
         stamp:     s?.stamp     || '☕',
       };
 
-      await wwPost(
-        `/api/pkpass/${customer.serial_number}`,
-        buildPassBody(customer, cafeSettings, newStamps),
-        'PUT',
-      );
-
-      await updateCustomerRow(customerId, {
-        stamps:   newStamps,
-        redeemed: false,
-      });
+      await wwPost(`/api/pkpass/${customer.serial_number}`, buildPassBody(customer, cafeSettings, newStamps), 'PUT');
+      await updateCustomerRow(customerId, { stamps: newStamps, redeemed: false });
 
       return res.status(200).json({
-        success:   true,
-        stamps:    newStamps,
-        needed:    STAMPS_NEEDED,
+        success: true, stamps: newStamps, needed: STAMPS_NEEDED,
         completed: newStamps >= STAMPS_NEEDED,
       });
     }
 
-    // ── REDEEM ──────────────────────────────────────────────────────
+    // ── REDEEM ─────────────────────────────────────────────────────────
     if (action === 'redeem') {
-      const { customerId, pin } = payload || {};
+      const { customerId, pin } = payload;
       if (!customerId)       return res.status(400).json({ error: 'customerId required' });
       if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
 
       const customer = await getCustomer(customerId);
       if (!customer)         return res.status(404).json({ error: 'customer not found' });
-
-      if ((customer.stamps || 0) < STAMPS_NEEDED) {
+      if ((customer.stamps || 0) < STAMPS_NEEDED)
         return res.status(400).json({ error: 'not enough stamps to redeem' });
-      }
 
       const s = await getSettings();
-      const cafeSettings = {
-        cafe_name: s?.cafe_name || customer.cafe_name,
-        accent:    s?.accent    || customer.accent,
-        stamp:     s?.stamp     || '☕',
-      };
+      const cafeSettings = { cafe_name: s?.cafe_name || customer.cafe_name, accent: s?.accent || customer.accent, stamp: s?.stamp || '☕' };
 
-      await wwPost(
-        `/api/pkpass/${customer.serial_number}`,
-        buildPassBody(customer, cafeSettings, 0),
-        'PUT',
-      );
-
-      await updateCustomerRow(customerId, {
-        stamps:          0,
-        redeemed:        true,
-        last_stamp_date: null,
-      });
+      await wwPost(`/api/pkpass/${customer.serial_number}`, buildPassBody(customer, cafeSettings, 0), 'PUT');
+      await updateCustomerRow(customerId, { stamps: 0, redeemed: true, last_stamp_date: null });
 
       return res.status(200).json({ success: true, stamps: 0 });
     }
 
-    // ── GET CUSTOMER (staff lookup — PIN protected) ─────────────────
+    // ── GET CUSTOMER ───────────────────────────────────────────────────
     if (action === 'get-customer') {
-      const { customerId, pin } = payload || {};
+      const { customerId, pin } = payload;
       if (!customerId)       return res.status(400).json({ error: 'customerId required' });
       if (pin !== STAFF_PIN) return res.status(403).json({ error: 'incorrect pin' });
 
@@ -369,20 +324,19 @@ export default async function handler(req, res) {
       if (!customer)         return res.status(404).json({ error: 'customer not found' });
 
       return res.status(200).json({
-        id:              customer.id,
-        name:            customer.name,
-        stamps:          customer.stamps,
-        redeemed:        customer.redeemed,
-        last_stamp_date: customer.last_stamp_date,
-        created_at:      customer.created_at,
-        cafe_name:       customer.cafe_name,
+        id:         customer.id,
+        name:       customer.name,
+        stamps:     customer.stamps,
+        redeemed:   customer.redeemed,
+        created_at: customer.created_at,
+        cafe_name:  customer.cafe_name,
       });
     }
 
     return res.status(400).json({ error: `unknown action: ${action}` });
 
   } catch (err) {
-    console.error('[lucky-cup api]', err);
+    console.error('[lucky-cup api]', err.message);
     return res.status(500).json({ error: err.message || 'internal error' });
   }
 }
