@@ -178,14 +178,17 @@ export default async function handler(req, res) {
       logoText:         s.cafe_name,
       organizationName: s.cafe_name,
       description:      'Loyalty card',
-      // primaryFields: left side below strip — member name
-      // secondaryFields are rendered right of primary — stamp count goes there
+      // primaryFields: must exist but kept invisible so nothing overlays strip
       primaryFields: [{
-        label: 'MEMBER',
-        value: customer.name,
+        label: ' ',
+        value: ' ',
       }],
-      // secondaryFields: right side below strip — stamp count
+      // secondaryFields: below the strip — name left, stamps right
       secondaryFields: [
+        {
+          label: 'MEMBER',
+          value: customer.name,
+        },
         {
           label: 'STAMPS',
           value: `${stamps} of ${needed}`,
