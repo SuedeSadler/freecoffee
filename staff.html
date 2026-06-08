@@ -745,47 +745,39 @@ async function checkCPin() {
   }
 }
 
-// ── ADD STAMP ─────────────────────────────────────
+
+// ── ADD STAMP ─────────────────
 async function doStamp() {
   if (!customer) return;
   setState('stamping');
   document.getElementById('sfText').textContent = 'adding stamp…';
 
   try {
-    const newStamps = (customer.stamps || 0) + 1;
-    const today     = new Date().toISOString().slice(0,10);
-    const isWon     = newStamps >= CONFIG.STAMPS_NEEDED;
-
-    document.getElementById('sfText').textContent = 'updating wallet pass…';
-    await updatePass(
-      customer.serial_number,
-      { ...customer, stamps: newStamps },
-      { cafe_name: CAFE, accent: ACCENT },
-    );
-
-    document.getElementById('sfText').textContent = 'saving…';
-    await updateCustomer(customer.id, {
-      stamps:          newStamps,
-      last_stamp_date: today,
-      redeemed:        false,
+    const result = await apiCall('add-stamp', {
+      customerId: customer.id,
+      pin:        STAFF_PIN,
     });
 
-    // success
-    document.getElementById('doneIcon').textContent   = isWon ? '🎉' : STAMP_IC;
-    document.getElementById('doneTitle').textContent  = isWon ? 'free coffee earned!' : 'stamp added.';
-    document.getElementById('doneSub').textContent    = isWon
+    const isWon = result.completed;
+    customer.stamps = result.stamps;
+
+    document.getElementById('doneIcon').textContent  = isWon ? '🎉' : STAMP_IC;
+    document.getElementById('doneTitle').textContent = isWon ? 'free coffee earned!' : 'stamp added.';
+    document.getElementById('doneSub').textContent   = isWon
       ? `${customer.name} has earned a free coffee!`
-      : `${customer.name} now has ${newStamps} of ${CONFIG.STAMPS_NEEDED} stamps. notified on their phone.`;
+      : `${customer.name} now has ${result.stamps} of ${result.needed} stamps. notified on their phone.`;
 
     setState('done');
 
   } catch (err) {
     setState('customer');
-    alert(`stamp failed: ${err.message}`);
+    alert(err.message === 'already stamped today'
+      ? 'already stamped today · one stamp per customer per day'
+      : `stamp failed: ${err.message}`);
   }
 }
 
-// ── REDEEM ────────────────────────────────────────
+// ── REDEEM ────────────────
 async function doRedeem() {
   if (!customer) return;
   if (!confirm(`redeem free coffee for ${customer.name}? this will reset their stamp card to 0.`)) return;
@@ -794,12 +786,10 @@ async function doRedeem() {
   document.getElementById('sfText').textContent = 'redeeming…';
 
   try {
-    await updateCustomer(customer.id, { stamps: 0, redeemed: true, last_stamp_date: null });
-    await updatePass(
-      customer.serial_number,
-      { ...customer, stamps: 0 },
-      { cafe_name: CAFE, accent: ACCENT },
-    );
+    await apiCall('redeem', {
+      customerId: customer.id,
+      pin:        STAFF_PIN,
+    });
 
     document.getElementById('doneIcon').textContent  = '☕';
     document.getElementById('doneTitle').textContent = 'enjoy!';
