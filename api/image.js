@@ -149,32 +149,31 @@ function inCup(lx, ly, S) {
 // Bottom 67% = two rows of 5 stamp icons — like a real loyalty card
 
 function makeStrip(stamps, needed, accentHex) {
-  const W = 1125, H = 720;
+  // Apple Wallet crops the strip image to exactly 369px tall (123pt @3x).
+  // Both rows must fit within this hard limit.
+  const W = 1125, H = 369;
   const [ar,ag,ab] = hexToRgb(accentHex);
   const bg   = [245,237,224];
   const cols = 5, rows = 2;
 
-  // Full height used for stamps — name is in headerFields, not over the strip
-  const pad    = 40;  // padding top/bottom
-  const zoneH  = H - pad * 2;
+  const padX   = 80;
+  const padTop = 24;
+  const padBot = 20;
+  const gapX   = Math.floor((W - padX * 2) / cols);
+  const gapY   = Math.floor((H - padTop - padBot) / rows);
 
-  // Stamp size — fill the space
-  const S = Math.floor(Math.min(
-    (W - 100) / cols * 0.82,
-    (zoneH - 20) / rows * 0.88
-  ));
-  const R      = Math.floor(S / 2);
-  const colGap = Math.floor((W - 60) / cols);
-  const rowGap = Math.floor((zoneH) / rows);
-  const startX = Math.floor((W - (cols - 1) * colGap) / 2);
-  const startY = pad + Math.floor(rowGap * 0.4);
+  // 44% of the smaller gap — both rows guaranteed to fit with clearance
+  const R      = Math.floor(Math.min(gapX, gapY) * 0.44);
+  const S      = R * 2;
+  const startX = padX + Math.floor(gapX / 2);
+  const startY = padTop + Math.floor(gapY / 2);
   const ruleY  = H - 14;
 
   function getStamp(px, py, idx) {
     const row = Math.floor(idx / cols);
     const col = idx % cols;
-    const cx  = startX + col * colGap;
-    const cy  = startY + row * rowGap;
+    const cx  = startX + col * gapX;
+    const cy  = startY + row * gapY;
     const lx  = px - cx, ly = py - cy;
     const d2  = lx*lx + ly*ly;
     if (d2 > R*R) return null;
