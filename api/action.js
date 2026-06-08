@@ -17,6 +17,8 @@ export default async function handler(req, res) {
   const WALLETWALLET_KEY = process.env.WALLETWALLET_KEY;
   const STAFF_PIN        = process.env.STAFF_PIN;
   const STAMPS_NEEDED    = parseInt(process.env.STAMPS_NEEDED || '10');
+  // Base URL of your Vercel deployment — used to build the QR code link
+  const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
 
   const { action, payload } = req.body || {};
   if (!action) return res.status(400).json({ error: 'action required' });
@@ -73,7 +75,7 @@ export default async function handler(req, res) {
     const isComplete = stamps >= needed;
 
     return {
-      barcodeValue:     customer.id,
+      barcodeValue:     SITE_URL ? `${SITE_URL}/staff.html?id=${customer.id}` : customer.id,
       barcodeFormat:    'QR',
       logoText:         s.cafe_name,
       organizationName: s.cafe_name,
