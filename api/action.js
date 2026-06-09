@@ -4,7 +4,7 @@
 export const config = { api: { bodyParser: false } };
 
 import { createClient } from '@supabase/supabase-js';
-import { pbkdf2 as _pbkdf2, randomBytes, timingSafeEqual } from 'crypto';
+import { pbkdf2 as _pbkdf2, randomBytes, timingSafeEqual, randomUUID } from 'crypto';
 import zlib from 'zlib';
 
 // PIN hashing -- Node built-in crypto, no external packages needed
@@ -313,7 +313,7 @@ export default async function handler(req, res) {
     }
 
     const custId = randomId();
-    const serial = crypto.randomUUID();
+    const serial = randomUUID();
     const passResult = await buildPass({
       serial, custId, name, stamps: 0,
       accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version: 1,
