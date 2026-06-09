@@ -417,11 +417,29 @@ export default async function handler(req, res) {
 
     const logoUrl = `${SUPABASE_URL}/storage/v1/object/public/cafe-logos/${filename}`;
 
-    const { error: updateErr } = await supa
-      .from('cafe_settings')
-      .update({ logo_url: logoUrl })
-      .eq('slug', slug);
-    if (updateErr) return err(res, updateErr.message, 500);
+    // Use raw REST PATCH so we can see exactly what Supabase returns
+    const patchRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/cafe_settings?slug=eq.${encodeURIComponent(slug)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type':  'application/json',
+          'Prefer':        'return=representation',
+        },
+        body: JSON.stringify({ logo_url: logoUrl }),
+      }
+    );
+    const patchText = await patchRes.text();
+    console.log('[upload-logo] PATCH status:', patchRes.status, 'body:', patchText);
+    if (!patchRes.ok) return err(res, `DB update failed: ${patchText}`, 500);
+
+    let patchRows;
+    try { patchRows = JSON.parse(patchText); } catch { patchRows = []; }
+    if (!patchRows.length) {
+      return err(res, `No cafe found with slug "${slug}" — storage upload succeeded but DB not updated`, 404);
+    }
 
     return ok(res, { logoUrl });
   }
