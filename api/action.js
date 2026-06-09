@@ -244,11 +244,12 @@ const WW_AUTH = () => ({
 });
 
 // Build pass payload -- uses cafe accent for strip AND logo, with push fields
-function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) {
+function passPayload({ custId, name, stamps, accent, cafeName, slug, version, logoUrl }) {
   const full      = stamps >= STAMPS_NEEDED;
   const versionN  = version || 1;
   const stripUri  = makeStripDataUri(stamps, STAMPS_NEEDED, accent, versionN);
-  const logoUri   = makeLogoDataUri(accent);
+  // Use uploaded cafe logo if available, otherwise fall back to generated accent block
+  const logoUri   = logoUrl || makeLogoDataUri(accent);
   const qrUrl     = `${SITE_URL}/staff.html?cafe=${slug}&id=${custId}`;
 
   // changeMessage triggers a live push notification to the customer's phone
@@ -323,8 +324,8 @@ async function wwUpdatePass(serial, payload) {
 }
 
 // serial=null -> create new pass; serial=string -> update + push
-async function buildPass({ serial, custId, name, stamps, accent, cafeName, slug, version }) {
-  const payload = passPayload({ custId, name, stamps, accent, cafeName, slug, version });
+async function buildPass({ serial, custId, name, stamps, accent, cafeName, slug, version, logoUrl }) {
+  const payload = passPayload({ custId, name, stamps, accent, cafeName, slug, version, logoUrl });
   if (!serial) {
     const data = await wwCreatePass(payload);
     // data = { serialNumber, shareUrl, applePass, googleSaveUrl, ... }
@@ -378,12 +379,59 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── upload-logo ───────────────────────────────────────────────────────────
+  // Receives { action, slug, masterKey, imageBase64, mimeType }
+  // Uploads to Supabase Storage and saves public URL to cafe_settings.logo_url
+  if (action === 'upload-logo') {
+    const { masterKey, imageBase64, mimeType } = body;
+    if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
+    if (!slug)          return err(res, 'slug required', 400);
+    if (!imageBase64)   return err(res, 'imageBase64 required', 400);
+
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+    const mime    = mimeType || 'image/png';
+    if (!allowed.includes(mime)) return err(res, 'Image must be PNG, JPEG, WEBP or SVG', 400);
+
+    const ext      = mime.split('/')[1].replace('jpeg','jpg').replace('svg+xml','svg');
+    const filename = `${slug}/logo.${ext}`;
+    const imgBuf   = Buffer.from(imageBase64, 'base64');
+
+    // Upload via Supabase Storage REST API
+    const uploadRes = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/cafe-logos/${filename}`,
+      {
+        method:  'POST',
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type':  mime,
+          'x-upsert':      'true',
+        },
+        body: imgBuf,
+      }
+    );
+    if (!uploadRes.ok) {
+      const t = await uploadRes.text();
+      return err(res, `Storage upload failed: ${t}`, 500);
+    }
+
+    const logoUrl = `${SUPABASE_URL}/storage/v1/object/public/cafe-logos/${filename}`;
+
+    const { error: updateErr } = await supa
+      .from('cafe_settings')
+      .update({ logo_url: logoUrl })
+      .eq('slug', slug);
+    if (updateErr) return err(res, updateErr.message, 500);
+
+    return ok(res, { logoUrl });
+  }
+
   // ── get-settings ──────────────────────────────────────────────────────────
   if (action === 'get-settings') {
     if (!slug) return err(res, 'slug required', 400);
     const { data, error } = await supa
       .from('cafe_settings')
-      .select('cafe_name, accent, stamp, mode, slug')
+      .select('cafe_name, accent, stamp, mode, slug, logo_url')
       .eq('slug', slug).single();
     if (error || !data) return err(res, 'Cafe not found', 404);
     return ok(res, { settings: data });
@@ -409,7 +457,7 @@ export default async function handler(req, res) {
     try {
       passResult = await buildPass({
         serial: null, custId, name, stamps: 0,
-        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version: 1,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version: 1, logoUrl: cafe.logo_url,
       });
     } catch (e) {
       return err(res, `Pass creation failed: ${e.message}`, 500);
@@ -471,7 +519,7 @@ export default async function handler(req, res) {
       await buildPass({
         serial: cust.serial_number || cust.serial,
         custId, name: cust.name, stamps: newStamps,
-        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version, logoUrl: cafe.logo_url,
       });
     } catch (e) {
       return err(res, `Pass update failed: ${e.message}`, 500);
@@ -505,7 +553,7 @@ export default async function handler(req, res) {
       await buildPass({
         serial: cust.serial_number || cust.serial,
         custId, name: cust.name, stamps: 0,
-        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version, logoUrl: cafe.logo_url,
       });
     } catch (e) {
       return err(res, `Pass update failed: ${e.message}`, 500);

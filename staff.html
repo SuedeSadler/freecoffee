@@ -197,6 +197,9 @@
 <body>
 <div class="wrap">
   <div class="logo">Lucky<span>Cup</span></div>
+  <div id="cafeLogoWrap" style="display:none;margin-bottom:12px">
+    <img id="cafeLogo" src="" alt="" style="max-height:48px;max-width:160px;object-fit:contain">
+  </div>
   <div class="cafe-name" id="cafeName">Loading...</div>
 
   <!-- Loading -->
@@ -317,6 +320,10 @@ function applyTheme(s) {
   document.documentElement.style.setProperty('--accent', s.accent);
   document.getElementById('cafeName').textContent = s.cafe_name;
   document.title = `Staff Terminal — ${s.cafe_name}`;
+  if (s.logo_url) {
+    document.getElementById('cafeLogo').src = s.logo_url;
+    document.getElementById('cafeLogoWrap').style.display = '';
+  }
 }
 
 // ── PIN gate ─────────────────────────────────────────────────────────────────

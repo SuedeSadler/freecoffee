@@ -384,8 +384,9 @@
     <div class="step-dot" id="dot1"></div>
     <div class="step-dot" id="dot2"></div>
     <div class="step-dot" id="dot3"></div>
+    <div class="step-dot" id="dot4"></div>
   </div>
-  <div class="step-label" id="stepLabel">Step 1 of 4 — Display Mode</div>
+  <div class="step-label" id="stepLabel">Step 1 of 5 — Display Mode</div>
 
   <!-- Error/info messages -->
   <div class="msg error" id="errMsg" style="display:none"></div>
@@ -453,8 +454,44 @@
     </div>
   </div>
 
-  <!-- ── STEP 4: PIN + master key ──────────────────────────────── -->
+  <!-- ── STEP 4: Logo upload ──────────────────────────────────── -->
   <div class="card" id="step3" style="display:none">
+    <h2>Cafe Logo</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px">
+      Upload your logo. It appears on the loyalty card and your signup page. PNG or JPEG, square crop works best. Optional — skip to use a colour block.
+    </p>
+
+    <!-- Drop zone -->
+    <div id="dropZone" style="
+      border:2px dashed var(--border);
+      padding:32px 16px;
+      text-align:center;
+      cursor:pointer;
+      margin-bottom:16px;
+      transition:border-color 0.2s;
+    " onclick="document.getElementById('logoFileInput').click()"
+       ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+       ondragleave="this.style.borderColor='var(--border)'"
+       ondrop="handleDrop(event)">
+      <div id="dropLabel" style="font-size:12px;color:var(--muted);letter-spacing:1px">
+        Drop image here or click to browse
+      </div>
+      <img id="logoPreviewImg" src="" alt="" style="display:none;max-width:160px;max-height:80px;margin-top:16px;object-fit:contain">
+    </div>
+    <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+           style="display:none" onchange="handleFileSelect(this.files[0])">
+
+    <div class="msg error" id="logoErr" style="display:none"></div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-ghost" onclick="goStep(4)" style="flex:0.5">Skip</button>
+      <button class="btn" onclick="goStep(4)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 5: PIN + master key ──────────────────────────────── -->
+  <div class="card" id="step4" style="display:none">
     <h2>Staff PIN &amp; Auth</h2>
     <p style="font-size:12px;color:var(--muted);margin-bottom:20px">
       Your staff will enter this PIN to stamp cards. Keep it secret — it cannot be recovered, only reset by running setup again.
@@ -479,7 +516,7 @@
     </p>
 
     <div class="nav-row">
-      <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
       <button class="btn" id="createBtn" onclick="createCafe()">Create Cafe →</button>
     </div>
   </div>
@@ -614,15 +651,16 @@ function goStep(n) {
   document.getElementById('step' + n).style.display = '';
   currentStep = n;
   // update progress bar
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const d = document.getElementById('dot' + i);
     d.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
   }
   const labels = [
-    'Step 1 of 4 — Display Mode',
-    'Step 2 of 4 — Cafe Details & Colour',
-    'Step 3 of 4 — Stamp Icon',
-    'Step 4 of 4 — Staff PIN',
+    'Step 1 of 5 — Display Mode',
+    'Step 2 of 5 — Cafe Details & Colour',
+    'Step 3 of 5 — Stamp Icon',
+    'Step 4 of 5 — Logo',
+    'Step 5 of 5 — Staff PIN',
   ];
   document.getElementById('stepLabel').textContent = labels[n];
   document.getElementById('errMsg').style.display = 'none';
@@ -720,6 +758,38 @@ function showErr(msg) {
   el.style.display = '';
 }
 
+// ── Logo handling ─────────────────────────────────────────────────────────────
+let logoFile = null;
+let logoBase64 = null;
+
+function handleFileSelect(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    document.getElementById('logoErr').textContent = 'Please select an image file.';
+    document.getElementById('logoErr').style.display = '';
+    return;
+  }
+  logoFile = file;
+  document.getElementById('logoErr').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    logoBase64 = dataUrl.split(',')[1];
+    const img = document.getElementById('logoPreviewImg');
+    img.src = dataUrl;
+    img.style.display = '';
+    document.getElementById('dropLabel').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
+}
+
 // ── Create cafe ──────────────────────────────────────────────────────────────
 async function createCafe() {
   const pin = document.getElementById('staffPin').value;
@@ -736,6 +806,7 @@ async function createCafe() {
   btn.textContent = 'Creating...';
 
   try {
+    // 1. Create the cafe first
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -753,8 +824,29 @@ async function createCafe() {
     const data = await res.json();
     if (!data.ok) return showErr(data.error || 'Something went wrong.');
 
-    // Show success
-    document.getElementById('step3').style.display = 'none';
+    // 2. Upload logo if provided
+    if (logoBase64 && logoFile) {
+      btn.textContent = 'Uploading logo...';
+      const uploadRes = await fetch(CONFIG.apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'upload-logo',
+          slug: state.slug,
+          masterKey,
+          imageBase64: logoBase64,
+          mimeType: logoFile.type,
+        }),
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.ok) {
+        // Non-fatal -- cafe is created, logo just didn't upload
+        console.warn('Logo upload failed:', uploadData.error);
+      }
+    }
+
+    // 3. Show success
+    document.getElementById('step4').style.display = 'none';
     document.getElementById('stepBar').style.display = 'none';
     document.getElementById('stepLabel').style.display = 'none';
     document.getElementById('successBox').style.display = '';
