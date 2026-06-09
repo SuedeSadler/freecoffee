@@ -350,8 +350,16 @@ export default async function handler(req, res) {
     if (!passUrl) return err(res, 'Pass created but no share URL returned', 500);
 
     const { error: insertErr } = await supa.from('customers').insert({
-      customer_id: custId, serial: serialNumber, name,
-      email: email || null, stamps: 0, cafe_id: cafe.cafe_id,
+      customer_id: custId,
+      serial: serialNumber,
+      serial_number: serialNumber,
+      name,
+      email: email || null,
+      stamps: 0,
+      cafe_id: cafe.cafe_id,
+      cafe_name: cafe.cafe_name,
+      accent: cafe.accent,
+      mode: cafe.mode,
     });
     if (insertErr) return err(res, insertErr.message, 500);
 
