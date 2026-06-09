@@ -263,9 +263,9 @@ function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) 
     logoText:         cafeName,
     organizationName: cafeName,
     description:      `${cafeName} Loyalty Card`,
-    colorPro:         '#1a1a1a',
-    stripURLPro:      stripUri,
-    logoURLPro:       logoUri,
+    color:         '#1a1a1a',
+    stripURL:      stripUri,
+    logoURL:       logoUri,
 
     primaryFields: full
       ? [{ label: 'REWARD', value: '1 FREE COFFEE' }]
