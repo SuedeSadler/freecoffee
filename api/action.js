@@ -382,6 +382,14 @@ export default async function handler(req, res) {
   // ── upload-logo ───────────────────────────────────────────────────────────
   // Receives { action, slug, masterKey, imageBase64, mimeType }
   // Uploads to Supabase Storage and saves public URL to cafe_settings.logo_url
+  if (action === 'list-buckets') {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+    });
+    const t = await r.text();
+    return res.status(200).json({ status: r.status, buckets: t });
+  }
+
   if (action === 'upload-logo') {
     const { masterKey, imageBase64, mimeType } = body;
     if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
@@ -396,23 +404,15 @@ export default async function handler(req, res) {
     const filename = `${slug}/logo.${ext}`;
     const imgBuf   = Buffer.from(imageBase64, 'base64');
 
-    // Upload via Supabase Storage REST API
-    const uploadRes = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/cafe-logos/${filename}`,
-      {
-        method:  'POST',
-        headers: {
-          'apikey':        SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type':  mime,
-          'x-upsert':      'true',
-        },
-        body: imgBuf,
-      }
-    );
-    if (!uploadRes.ok) {
-      const t = await uploadRes.text();
-      return err(res, `Storage upload failed: ${t}`, 500);
+    // Upload via Supabase JS client
+    const { error: storageErr } = await supa.storage
+      .from('cafe-logos')
+      .upload(filename, imgBuf, { contentType: mime, upsert: true });
+
+    if (storageErr) {
+      // Log full error for debugging
+      console.log('[upload-logo] storage error:', JSON.stringify(storageErr));
+      return err(res, `Storage upload failed: ${storageErr.message}`, 500);
     }
 
     const logoUrl = `${SUPABASE_URL}/storage/v1/object/public/cafe-logos/${filename}`;
