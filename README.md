@@ -1,88 +1,67 @@
-# Lucky Cup — Loyalty System
+# Lucky Cup — Multi-cafe Apple Wallet Loyalty Card
 
-## Files
+## Setup
+
+### 1. Supabase
+Run `schema.sql` in your Supabase SQL editor.
+
+### 2. Vercel environment variables
+Set in Vercel → Settings → Environment Variables:
+
+| Variable | Value |
+|---|---|
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_KEY` | Service role key (sb_secret_...) |
+| `WALLETWALLET_KEY` | WalletWallet Pro API key |
+| `MASTER_KEY` | A secret string you choose — used to create new cafes |
+| `STAMPS_NEEDED` | `10` |
+| `SITE_URL` | Your Vercel URL, no trailing slash |
+
+### 3. Deploy
+Push to GitHub and connect to Vercel, or `vercel deploy`.
+
+### 4. Create your first cafe
+Visit `/setup` on your deployed site.  
+You'll need your `MASTER_KEY` at the final step.
+
+---
+
+## URLs
+- `/setup` — create a new cafe (requires MASTER_KEY)
+- `/signup?cafe=your-slug` — customer signup page
+- `/staff?cafe=your-slug` — staff stamp terminal
+- `/staff?cafe=your-slug&id=CUST-XXXXXX` — direct from QR scan
+
+---
+
+## Before go-live checklist
+- [ ] Remove `debug` and `test-update` actions from `api/action.js` (already omitted)
+- [ ] Re-enable daily stamp limit in `add-stamp` handler
+- [ ] Confirm WalletWallet push notifications are working
+
+---
+
+## File structure
 ```
-config.js        ← safe client config (no secrets)
-setup.html       ← cafe onboarding (run once)
-signup.html      ← customer sign-up (public URL)
-staff.html       ← staff stamp terminal (staff only)
-api/action.js    ← Vercel serverless function (all secrets live here)
-vercel.json      ← Vercel config
-```
-
-## Vercel Environment Variables
-Add these in Vercel → Settings → Environment Variables:
-
-| Variable           | Value                                      |
-|--------------------|--------------------------------------------|
-| SUPABASE_URL       | https://xxxx.supabase.co                   |
-| SUPABASE_KEY       | your SERVICE ROLE key (not anon)           |
-| WALLETWALLET_KEY   | ww_live_...                                |
-| STAFF_PIN          | your 4-digit PIN                           |
-| STAMPS_NEEDED      | 10                                         |
-
-⚠️  Use the SERVICE ROLE key in Vercel (not the anon key).
-    The service role key is only ever used server-side in api/action.js.
-    The anon key is not needed at all — the API function handles all DB calls.
-
-## Supabase Setup
-Run this SQL in Supabase → SQL Editor:
-
-```sql
--- Cafe settings table (one row per deployment)
-create table cafe_settings (
-  id         int  primary key default 1,
-  cafe_name  text not null,
-  accent     text default '#c94f2b',
-  stamp      text default '☕',
-  mode       text default 'dark',
-  updated_at timestamptz default now()
-);
-
--- Enforce single row
-create unique index cafe_settings_single on cafe_settings ((true));
-
--- Lock it down (service role bypasses RLS)
-alter table cafe_settings enable row level security;
-
--- Customers table
-create table customers (
-  id               text primary key,
-  name             text not null,
-  email            text,
-  serial_number    text not null,
-  stamps           int  default 0,
-  redeemed         bool default false,
-  mode             text default 'dark',
-  accent           text default '#c94f2b',
-  cafe_name        text default 'Your Cafe',
-  last_stamp_date  date,
-  created_at       timestamptz default now()
-);
-
--- lock down the table (service role key bypasses RLS)
-alter table customers enable row level security;
+lucky-cup/
+├── api/
+│   └── action.js      ← all secrets + business logic
+├── config.js          ← public client config (no secrets)
+├── setup.html         ← cafe onboarding
+├── signup.html        ← customer card signup (?cafe=slug)
+├── staff.html         ← staff stamp terminal (?cafe=slug&id=...)
+├── schema.sql         ← Supabase schema
+├── vercel.json        ← URL rewrites
+└── README.md
 ```
 
-With RLS enabled and no policies, only the service role key
-(used server-side in api/action.js) can read or write.
-The browser never touches Supabase directly.
+---
 
-## Deploy
-1. Push to GitHub
-2. Import repo in Vercel
-3. Add environment variables
-4. Deploy
-
-## First Use
-1. Visit /setup.html → walk through 4 steps
-2. Settings saved to localStorage on that device
-3. Give customers the URL to /signup.html
-4. Staff bookmark /staff.html
-
-## Security Model
-- Browser holds: nothing sensitive
-- api/action.js holds: Supabase service key, WalletWallet key, staff PIN
-- PIN is verified server-side on every stamp/redeem/lookup
-- Daily stamp limit enforced server-side
-- serial_number never sent to browser
+## Multi-cafe flow
+1. Cafe owner visits `/setup`, fills in details + PIN + MASTER_KEY
+2. API creates a row in `cafe_settings` with hashed PIN
+3. Owner shares `/signup?cafe=their-slug` with customers
+4. Customers sign up → get a `.pkpass` added to Apple Wallet
+5. Staff visit `/staff?cafe=their-slug`, enter PIN once per session
+6. Staff scan customer QR → card loads → tap "Add Stamp"
+7. At 10 stamps: "Redeem Free Coffee" button appears

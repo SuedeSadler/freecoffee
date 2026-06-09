@@ -3,390 +3,272 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loyalty Card — Sign Up</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<title>Sign Up — Lucky Cup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #333;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #c94f2b;
+    --accent-contrast: #fff;
+    --font: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .wrap { width: 100%; max-width: 420px; }
 
-/* ── THEME — loaded from localStorage ── */
-:root {
-  --accent:  #c94f2b;
-  --ink:     #111;
-  --surface: #1e1e1e;
-  --base:    #141414;
-  --paper:   #f4f4f2;
-  --muted:   #666660;
-  --border:  rgba(255,255,255,0.09);
-}
+  .logo { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .logo span { color: var(--accent); }
+  .cafe-name { font-size: 12px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 36px; }
 
-body {
-  font-family: 'IBM Plex Mono', monospace;
-  background: var(--ink);
-  color: var(--paper);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 20px 48px;
-}
+  .card { border: 1px solid var(--border); background: var(--surface); padding: 28px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .desc { font-size: 12px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
 
-/* ── HERO ── */
-.hero-wrap { width: 100%; max-width: 420px; }
+  label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  input:focus { border-color: var(--accent); }
 
-.eyebrow {
-  font-size: 8px;
-  letter-spacing: 0.24em;
-  color: var(--accent);
-  margin-bottom: 10px;
-  opacity: 0.85;
-}
-.title {
-  font-size: clamp(36px, 10vw, 52px);
-  font-weight: 700;
-  color: var(--paper);
-  letter-spacing: -0.03em;
-  line-height: 1.0;
-  margin-bottom: 8px;
-}
-.title span { color: var(--accent); }
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.subtitle {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.06em;
-  line-height: 1.7;
-  margin-bottom: 36px;
-}
+  /* Stamp preview strip */
+  .stamp-strip {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .stamp-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 2px solid var(--accent);
+    opacity: 0.3;
+  }
 
-/* ── STAMP DOTS ROW ── */
-.stamp-track {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  margin-bottom: 32px;
-}
-.st-dot {
-  width: 20px; height: 20px;
-  border-radius: 3px;
-  border: 1.5px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  transition: background 0.3s, border-color 0.3s;
-}
-.st-dot.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.st-label { font-size: 8px; letter-spacing: 0.1em; color: var(--muted); margin-left: 6px; }
+  .msg { font-size: 12px; padding: 10px 14px; border: 1px solid; margin-bottom: 12px; }
+  .msg.error { border-color: #c94f2b; color: #e87; background: #1f1210; }
+  .msg.success { border-color: #2bc97a; color: #2bc97a; background: #0e1f15; }
 
-/* ── FORM ── */
-.card {
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-.card-hd {
-  background: var(--base);
-  padding: 11px 18px;
-  font-size: 7px;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-}
+  /* Success state */
+  .success-content { text-align: center; padding: 16px 0; }
+  .big-stamp { font-size: 64px; margin-bottom: 12px; }
+  .success-h { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .success-sub { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+  .wallet-btn {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+  .wallet-btn:hover { opacity: 0.85; }
 
-.card-body { padding: 18px; }
+  /* Light mode */
+  body.light {
+    --bg: #f5f0eb;
+    --surface: #fff;
+    --border: #d0c8c0;
+    --text: #1a1a1a;
+    --muted: #888;
+  }
 
-.f-label { font-size: 7px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 5px; }
-.f-input {
-  background: var(--base);
-  border: 1.5px solid var(--border);
-  border-radius: 4px;
-  padding: 11px 14px;
-  font-size: 14px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--paper);
-  width: 100%;
-  margin-bottom: 14px;
-  transition: border-color 0.2s;
-}
-.f-input:focus { outline: none; border-color: var(--accent); }
-.f-input::placeholder { color: #444; }
-.f-input:last-child { margin-bottom: 0; }
-
-.btn-signup {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 14px 20px;
-  width: 100%;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  font-weight: 700;
-  font-family: 'IBM Plex Mono', monospace;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: opacity 0.2s;
-  margin-top: 16px;
-}
-.btn-signup:hover   { opacity: 0.88; }
-.btn-signup:disabled{ opacity: 0.3; cursor: not-allowed; }
-
-.wallet-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 8px;
-  color: var(--muted);
-  letter-spacing: 0.07em;
-  margin-top: 10px;
-}
-.wn-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-
-/* ── STATES ── */
-.state { display: none; }
-.state.active { display: block; }
-
-/* ── LOADING ── */
-.loading-wrap {
-  text-align: center;
-  padding: 40px 0;
-}
-.spinner {
-  display: inline-block;
-  width: 32px; height: 32px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 16px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
-
-/* ── SUCCESS ── */
-.success-wrap { text-align: center; padding: 20px 0; }
-.success-icon { font-size: 52px; margin-bottom: 16px; display: block; }
-.success-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--paper);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin-bottom: 8px;
-}
-.success-title span { color: var(--accent); }
-.success-sub  { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; line-height: 1.8; margin-bottom: 24px; }
-
-.btn-secondary {
-  background: transparent;
-  color: var(--muted);
-  border: 1.5px solid var(--border);
-  border-radius: 4px;
-  padding: 12px 20px;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  font-family: 'IBM Plex Mono', monospace;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
-  width: 100%;
-}
-.btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: var(--paper); }
-
-/* ── ERROR ── */
-.error-box {
-  background: rgba(224,85,85,0.08);
-  border: 1px solid rgba(224,85,85,0.3);
-  border-radius: 4px;
-  padding: 12px 14px;
-  font-size: 8px;
-  color: #e05555;
-  letter-spacing: 0.08em;
-  line-height: 1.7;
-  margin-bottom: 14px;
-}
-
-/* footer */
-.footer-note { font-size: 7px; letter-spacing: 0.1em; color: #333; text-align: center; margin-top: 20px; line-height: 1.8; }
+  /* Loading spinner */
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+  .not-found { text-align: center; padding: 40px; }
+  .not-found h2 { color: #c94f2b; margin-bottom: 8px; }
+  .not-found p { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="logo">Lucky<span>Cup</span></div>
+  <div class="cafe-name" id="cafeName">Loading...</div>
 
-<div class="hero-wrap">
+  <!-- Loading state -->
+  <div class="loading" id="loadingState">Loading cafe...</div>
 
-  <!-- ── SIGN-UP STATE ── -->
-  <div class="state active" id="stateSignup">
-    <div class="eyebrow" id="cafeEyebrow">your cafe · loyalty</div>
-    <div class="title">loyalty<br><span>card.</span></div>
-    <div class="subtitle">collect 10 stamps, get a free coffee.<br>saved straight to apple wallet.</div>
-
-    <div class="stamp-track" id="stampTrack">
-      <!-- rendered by JS -->
-    </div>
-
-    <div class="card">
-      <div class="card-hd">// your details</div>
-      <div class="card-body">
-        <div class="f-label">your name</div>
-        <input class="f-input" id="nameInput" placeholder="jane smith" autocomplete="name"/>
-        <div class="f-label">email (optional · for updates)</div>
-        <input class="f-input" id="emailInput" placeholder="jane@email.com" type="email" autocomplete="email"/>
-      </div>
-    </div>
-
-    <div class="error-box" id="errorBox" style="display:none;"></div>
-
-    <button class="btn-signup" id="btnSignup" onclick="doSignup()">
-      <span>get my loyalty card</span>
-      <span>→</span>
-    </button>
-    <div class="wallet-note">
-      <div class="wn-dot"></div>
-      opens apple wallet · saves automatically
-    </div>
+  <!-- Not found -->
+  <div class="card not-found" id="notFound" style="display:none">
+    <h2>Cafe not found</h2>
+    <p>Check the link and try again.</p>
   </div>
 
-  <!-- ── LOADING STATE ── -->
-  <div class="state" id="stateLoading">
-    <div class="loading-wrap">
-      <div class="spinner"></div>
-      <div class="loading-text" id="loadingText">creating your card…</div>
-    </div>
+  <!-- Sign up form -->
+  <div class="card" id="formCard" style="display:none">
+    <h2>Get your loyalty card</h2>
+    <p class="desc">Sign up for a free digital stamp card — saved directly to your Apple Wallet. Collect 10 stamps, get a free coffee.</p>
+
+    <div class="stamp-strip" id="stampStrip"></div>
+
+    <div class="msg error" id="errMsg" style="display:none"></div>
+
+    <label>Your Name</label>
+    <input type="text" id="nameInput" placeholder="First name" autocomplete="given-name">
+
+    <label>Email (optional)</label>
+    <input type="email" id="emailInput" placeholder="your@email.com" autocomplete="email">
+
+    <button class="btn" id="signupBtn" onclick="doSignup()">Get My Card →</button>
   </div>
 
-  <!-- ── SUCCESS STATE ── -->
-  <div class="state" id="stateSuccess">
-    <div class="success-wrap">
-      <span class="success-icon">✦</span>
-      <div class="success-title">card<br><span>saved.</span></div>
-      <div class="success-sub">
-        your loyalty card is in apple wallet.<br>
-        double-tap the side button to see it.<br>
-        <br>
-        we'll ping you every time you get a stamp<br>
-        and when your free coffee is ready.
-      </div>
-      <button class="btn-secondary" onclick="reset()">sign up another card</button>
+  <!-- Success -->
+  <div class="card" id="successCard" style="display:none">
+    <div class="success-content">
+      <div class="big-stamp" id="bigStamp">☕</div>
+      <div class="success-h">You're in!</div>
+      <div class="success-sub">Tap the button below to add your loyalty card to Apple Wallet. Bring your phone every visit — staff will scan your card to stamp it.</div>
+      <a class="wallet-btn" id="walletLink" href="#">Add to Apple Wallet</a>
     </div>
   </div>
-
 </div>
 
-<div class="footer-note" id="footerNote">
-  powered by lucky cup ✦
-</div>
-
-<script src="config.js"></script>
+<script src="/config.js"></script>
 <script>
-// ── SETTINGS ───────────────────────────────
-// Loaded from Supabase on page load.
-// Falls back to localStorage cache for instant paint.
-let CAFE   = 'Your Cafe';
-let ACCENT = '#c94f2b';
-let STAMP  = '☕';
-let MODE   = 'dark';
+let cafeSlug = null;
+let cafeSettings = null;
 
-function applyTheme() {
-  document.documentElement.style.setProperty('--accent', ACCENT);
-  if (MODE === 'light') {
-    document.documentElement.style.setProperty('--ink',     '#f9f6f1');
-    document.documentElement.style.setProperty('--surface', '#ffffff');
-    document.documentElement.style.setProperty('--base',    '#f2ede6');
-    document.documentElement.style.setProperty('--paper',   '#1a1208');
-    document.documentElement.style.setProperty('--muted',   '#9a8878');
-    document.documentElement.style.setProperty('--border',  'rgba(0,0,0,0.1)');
-  }
-  document.getElementById('cafeEyebrow').textContent = `${CAFE.toLowerCase()} · loyalty`;
-  document.title = `${CAFE} — Loyalty Card`;
-}
+async function init() {
+  const params = new URLSearchParams(location.search);
+  cafeSlug = params.get('cafe');
 
-function buildStampTrack() {
-  const track = document.getElementById('stampTrack');
-  track.innerHTML = '';
-  for (let i = 0; i < 10; i++) {
-    const d = document.createElement('div');
-    d.className = 'st-dot';
-    track.appendChild(d);
-  }
-  const lbl = document.createElement('div');
-  lbl.className = 'st-label';
-  lbl.textContent = '10 stamps = free coffee';
-  track.appendChild(lbl);
-}
-
-// 1. Apply cached settings immediately (instant paint)
-(function applyCached() {
-  const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
-  if (cached.cafeName) {
-    CAFE = cached.cafeName; ACCENT = cached.accent || ACCENT;
-    STAMP = cached.stamp || STAMP; MODE = cached.mode || MODE;
-  }
-  applyTheme();
-  buildStampTrack();
-})();
-
-// 2. Fetch fresh settings from Supabase and silently update
-(async function fetchSettings() {
-  try {
-    const s = await apiCall('get-settings', {});
-    CAFE = s.cafeName; ACCENT = s.accent; STAMP = s.stamp; MODE = s.mode;
-    const cached = JSON.parse(localStorage.getItem('lc_settings') || '{}');
-    localStorage.setItem('lc_settings', JSON.stringify({
-      ...cached, cafeName: s.cafeName, accent: s.accent, stamp: s.stamp, mode: s.mode
-    }));
-    applyTheme();
-  } catch (e) {
-    console.warn('settings fetch failed, using cached:', e.message);
-  }
-})();
-
-
-// ── SIGN UP ────────────────────────────────────────
-async function doSignup() {
-  const name  = document.getElementById('nameInput').value.trim();
-  const email = document.getElementById('emailInput').value.trim();
-
-  if (!name) {
-    showError('please enter your name to continue.');
-    document.getElementById('nameInput').focus();
+  if (!cafeSlug) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('cafeName').textContent = '';
+    document.getElementById('notFound').style.display = '';
     return;
   }
 
-  hideError();
-  setState('loading');
-  setLoading('creating your card…');
-
   try {
-    const id = genId();
+    const res = await fetch(CONFIG.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get-settings', slug: cafeSlug }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('notFound').style.display = '';
+      return;
+    }
 
-    // single API call — server handles supabase + walletwallet
-    setLoading('generating your wallet pass…');
-    // server reads cafe settings from Supabase directly
-    const { blob } = await apiCall('create-pass', { id, name, email: email || null });
-
-    // trigger download / iOS wallet install
-    setLoading('opening apple wallet…');
-    downloadBlob(blob, 'loyalty-card.pkpass');
-
-    setTimeout(() => setState('success'), 800);
-
-  } catch (err) {
-    setState('signup');
-    showError(`something went wrong: ${err.message}`);
+    cafeSettings = data.settings;
+    applyTheme(cafeSettings);
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('formCard').style.display = '';
+    buildStampStrip();
+  } catch (e) {
+    document.getElementById('loadingState').textContent = 'Could not load cafe. Try again.';
   }
 }
 
-function setState(s) {
-  document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
-  document.getElementById(`state${s.charAt(0).toUpperCase()+s.slice(1)}`).classList.add('active');
+function applyTheme(s) {
+  if (s.mode === 'light') document.body.classList.add('light');
+  document.documentElement.style.setProperty('--accent', s.accent);
+  document.getElementById('cafeName').textContent = s.cafe_name;
+  document.title = `Sign Up — ${s.cafe_name}`;
 }
-function setLoading(msg) { document.getElementById('loadingText').textContent = msg; }
-function showError(msg)  { const e = document.getElementById('errorBox'); e.textContent = msg; e.style.display='block'; }
-function hideError()     { document.getElementById('errorBox').style.display='none'; }
-function reset() { setState('signup'); document.getElementById('nameInput').value=''; document.getElementById('emailInput').value=''; }
+
+function buildStampStrip() {
+  const strip = document.getElementById('stampStrip');
+  const stamp = cafeSettings?.stamp || '☕';
+  for (let i = 0; i < 10; i++) {
+    const c = document.createElement('div');
+    c.className = 'stamp-circle';
+    c.textContent = stamp;
+    strip.appendChild(c);
+  }
+}
+
+async function doSignup() {
+  const name = document.getElementById('nameInput').value.trim();
+  const email = document.getElementById('emailInput').value.trim();
+
+  if (!name) return showErr('Please enter your name.');
+
+  const btn = document.getElementById('signupBtn');
+  btn.disabled = true;
+  btn.textContent = 'Signing up...';
+
+  try {
+    const res = await fetch(CONFIG.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create-pass', slug: cafeSlug, name, email }),
+    });
+    const data = await res.json();
+    if (!data.ok) return showErr(data.error || 'Something went wrong.');
+
+    // Success!
+    document.getElementById('formCard').style.display = 'none';
+    const sCard = document.getElementById('successCard');
+    sCard.style.display = '';
+    document.getElementById('bigStamp').textContent = cafeSettings?.stamp || '☕';
+    document.getElementById('walletLink').href = data.passUrl;
+  } catch (e) {
+    showErr('Network error — please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get My Card →';
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+init();
 </script>
 </body>
 </html>

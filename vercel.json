@@ -1,12 +1,8 @@
 {
-  "functions": {
-    "api/action.js": {
-      "memory": 256,
-      "maxDuration": 15
-    },
-    "api/image.js": {
-      "memory": 128,
-      "maxDuration": 5
-    }
-  }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/setup", "destination": "/setup.html" },
+    { "source": "/signup", "destination": "/signup.html" },
+    { "source": "/staff", "destination": "/staff.html" }
+  ]
 }
