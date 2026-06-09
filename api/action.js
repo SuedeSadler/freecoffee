@@ -207,8 +207,8 @@ function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) 
     colorPro: '#1a1a1a',
     stripURLPro: stripDataUri,
     primaryFields: full
-      ? [{ label: '', value: 'REDEEM / 1 FREE COFFEE' }]
-      : [{ label: '', value: '' }],
+      ? [{ label: 'REWARD', value: '1 FREE COFFEE' }]
+      : [],
     secondaryFields: [
       { label: 'MEMBER', value: name },
       { label: 'STAMPS', value: `${stamps} of ${STAMPS_NEEDED}` },
@@ -216,7 +216,7 @@ function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) 
     backFields: [
       { label: 'CAFE',    value: cafeName },
       { label: 'UPDATED', value: new Date().toISOString() },
-      { label: '',        value: `v${version}-${Date.now()}` },
+      { label: 'REF',     value: `v${version}-${Date.now()}` },
     ],
   };
 }
