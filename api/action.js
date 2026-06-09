@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { pbkdf2 as _pbkdf2, randomBytes, timingSafeEqual, randomUUID } from 'crypto';
 import zlib from 'zlib';
 
-// PIN hashing -- Node built-in crypto, no external packages needed
+// ── PIN hashing (Node built-in crypto) ───────────────────────────────────────
 function hashPin(pin) {
   return new Promise((resolve, reject) => {
     const salt = randomBytes(16).toString('hex');
@@ -32,7 +32,7 @@ function checkPin(pin, stored) {
   });
 }
 
-// Env
+// ── Env ───────────────────────────────────────────────────────────────────────
 const SUPABASE_URL     = process.env.SUPABASE_URL;
 const SUPABASE_KEY     = process.env.SUPABASE_KEY;
 const WALLETWALLET_KEY = process.env.WALLETWALLET_KEY;
@@ -42,7 +42,7 @@ const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
 
 const db = () => createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Body parser
+// ── Body parser ───────────────────────────────────────────────────────────────
 async function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
@@ -55,39 +55,47 @@ async function readBody(req) {
   });
 }
 
-// PNG helpers (no external deps)
-function crc32(buf) {
-  const t = new Int32Array(256);
+// ── PNG encoder (zero external deps) ─────────────────────────────────────────
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
     let c = i;
-    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    for (let k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
     t[i] = c;
   }
-  let c = -1;
-  for (const b of buf) c = t[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ -1) >>> 0;
-}
+  return t;
+})();
 
-function u32be(n) {
-  const b = Buffer.alloc(4);
-  b.writeUInt32BE(n);
-  return b;
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
 function pngChunk(type, data) {
-  const tBuf = Buffer.from(type, 'ascii');
-  const dBuf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-  const cBuf = u32be(crc32(Buffer.concat([tBuf, dBuf])));
-  return Buffer.concat([u32be(dBuf.length), tBuf, dBuf, cBuf]);
+  const tb = Buffer.from(type, 'ascii');
+  const cb = Buffer.concat([tb, data]);
+  const lb = Buffer.alloc(4); lb.writeUInt32BE(data.length);
+  const rb = Buffer.alloc(4); rb.writeUInt32BE(crc32(cb));
+  return Buffer.concat([lb, tb, data, rb]);
 }
 
-function makePng(w, h, rows) {
-  const raw = rows.flatMap(row => [Buffer.from([0]), row]);
-  const compressed = zlib.deflateSync(Buffer.concat(raw));
+// getPixel(x, y) => [r, g, b, a]
+function makePng(W, H, getPixel) {
+  const rowLen = 1 + W * 4;
+  const raw = Buffer.alloc(H * rowLen);
+  for (let y = 0; y < H; y++) {
+    raw[y * rowLen] = 0; // filter byte
+    for (let x = 0; x < W; x++) {
+      const [r, g, b, a] = getPixel(x, y);
+      const o = y * rowLen + 1 + x * 4;
+      raw[o] = r; raw[o+1] = g; raw[o+2] = b; raw[o+3] = a;
+    }
+  }
+  const compressed = zlib.deflateSync(raw, { level: 6 });
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = ihdr[11] = ihdr[12] = 0;
+  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     pngChunk('IHDR', ihdr),
@@ -101,127 +109,195 @@ function hexToRgb(hex) {
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
 
-// Strip image: 1125x369, 2 rows of 5 stamps, or celebration at 10/10
-function makeStripPng(stamps, accent, version = 0) {
+// ── Coffee cup stamp renderer ─────────────────────────────────────────────────
+// Returns true if pixel (lx, ly) is part of the cup icon.
+// lx/ly are relative to the centre of the stamp cell; S is the cell size.
+function inCup(lx, ly, S) {
+  const s = S / 44;
+  const x = lx / s, y = ly / s;
+
+  // Steam -- two vertical wavy columns above rim
+  const steamLeft  = x >= 13 && x <= 15 && y >= 2 && y <= 9;
+  const steamRight = x >= 19 && x <= 21 && y >= 2 && y <= 9;
+  const steam = (steamLeft || steamRight) && (Math.floor(y) % 3 !== 1);
+
+  // Rim -- thick ellipse
+  const rimD = ((x - 22) / 11) ** 2 + ((y - 16) / 3.5) ** 2;
+  const rim  = rimD <= 1.0 && y >= 12.5;
+
+  // Body -- filled trapezoid
+  const bodyTop = 16, bodyBot = 32;
+  const inBody  = y >= bodyTop && y <= bodyBot &&
+    x >= (11 - (y - bodyTop) * 0.06) &&
+    x <= (33 + (y - bodyTop) * 0.06);
+
+  // Handle -- C-ring on right
+  const hD     = ((x - 35) / 5) ** 2 + ((y - 25) / 6) ** 2;
+  const hInner = ((x - 35) / 3) ** 2 + ((y - 25) / 4) ** 2;
+  const handle = hD <= 1.0 && x >= 35 && hInner > 1.0;
+
+  // Saucer -- filled ellipse at bottom
+  const sD     = ((x - 22) / 14) ** 2 + ((y - 34) / 3) ** 2;
+  const saucer = sD <= 1.0;
+
+  return steam || rim || inBody || handle || saucer;
+}
+
+// ── Strip image: 1125x369, 2 rows of 5 cups, or celebration state ────────────
+function makeStripDataUri(stamps, needed, accentHex, versionN = 0) {
   const W = 1125, H = 369;
-  const [ar, ag, ab] = hexToRgb(accent);
-  const full = stamps >= STAMPS_NEEDED;
-  const rows = [];
+  const [ar, ag, ab] = hexToRgb(accentHex);
+  const BG  = [26, 26, 26];  // dark background matches pass color
+  const ruleY  = H - 10;
+  const vByte  = (versionN % 200) + 28; // invisible corner pixel for cache-busting
 
-  function dist(x, y, cx, cy) { return Math.sqrt((x - cx) ** 2 + (y - cy) ** 2); }
+  // ── FULL / FREE COFFEE state ──────────────────────────────────────────────
+  if (stamps >= needed) {
+    const cx = W / 2, cy = (H - 10) / 2;
+    const bigS = 180, bigR = 90;
+    const inRing = (px, py) => {
+      const d = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+      return d >= bigR + 12 && d <= bigR + 28;
+    };
+    const inDot = (px, py) => {
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        const sx = cx + Math.cos(a) * (bigR + 48);
+        const sy = cy + Math.sin(a) * (bigR + 48);
+        if ((px - sx) ** 2 + (py - sy) ** 2 <= 36) return true;
+      }
+      return false;
+    };
+    const buf = makePng(W, H, (px, py) => {
+      if (px < 3 && py < 3) return [BG[0], BG[1], vByte, 255];
+      if (py >= ruleY) return [ar, ag, ab, 180];
+      const dx = px - cx, dy = py - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= bigR * bigR) {
+        return inCup(dx + bigR, dy + bigR, bigS) ? [...BG, 255] : [ar, ag, ab, 255];
+      }
+      if (inRing(px, py)) return [ar, ag, ab, 160];
+      if (inDot(px, py))  return [ar, ag, ab, 200];
+      return [...BG, 255];
+    });
+    return `data:image/png;base64,${buf.toString('base64')}`;
+  }
 
-  if (full) {
-    const cx = W / 2, cy = H / 2;
-    const haloR = 130, dotR = 12, dotOrbit = 160;
-    const cupW = 120, cupH = 100;
-    for (let y = 0; y < H; y++) {
-      const row = Buffer.alloc(W * 4);
-      for (let x = 0; x < W; x++) {
-        let r = 26, g = 26, b = 26, a = 255;
-        const d = dist(x, y, cx, cy);
-        if (d >= haloR - 6 && d <= haloR + 6) {
-          const alpha = Math.max(0, 1 - Math.abs(d - haloR) / 6);
-          r = ar; g = ag; b = ab; a = Math.round(200 * alpha);
-        }
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2;
-          if (dist(x, y, cx + Math.cos(angle) * dotOrbit, cy + Math.sin(angle) * dotOrbit) <= dotR) {
-            r = ar; g = ag; b = ab; a = 255;
-          }
-        }
-        const cupX = cx - cupW / 2, cupY = cy - cupH / 2 + 10;
-        if (x >= cupX && x <= cupX + cupW && y >= cupY && y <= cupY + cupH) {
-          r = ar; g = ag; b = ab; a = 255;
-          if (dist(x, y, cx, cupY + 10) <= 28) { r = 26; g = 26; b = 26; a = 255; }
-        }
-        if (dist(x, y, cx + cupW / 2 + 14, cy + 10) >= 14 &&
-            dist(x, y, cx + cupW / 2 + 14, cy + 10) <= 22 &&
-            x >= cx + cupW / 2 && y >= cy && y <= cy + 40) {
-          r = ar; g = ag; b = ab; a = 255;
-        }
-        row.writeUInt8(r, x*4); row.writeUInt8(g, x*4+1);
-        row.writeUInt8(b, x*4+2); row.writeUInt8(a, x*4+3);
-      }
-      rows.push(row);
-    }
-  } else {
-    const cols = 5, cellW = W / cols, cellH = H / 2;
-    const radius = 60, inner = 24;
-    for (let y = 0; y < H; y++) {
-      const row = Buffer.alloc(W * 4);
-      for (let x = 0; x < W; x++) {
-        let r = 26, g = 26, b = 26, a = 255;
-        const col = Math.floor(x / cellW);
-        const rowIdx = Math.floor(y / cellH);
-        const idx = rowIdx * cols + col;
-        const cx = col * cellW + cellW / 2;
-        const cy = rowIdx * cellH + cellH / 2;
-        const d = dist(x, y, cx, cy);
-        if (idx < stamps) {
-          if (d <= radius) {
-            r = ar; g = ag; b = ab; a = 255;
-            if (d <= inner) { r = 26; g = 26; b = 26; a = 255; }
-          }
-        } else {
-          if (d >= radius - 4 && d <= radius) {
-            r = ar; g = ag; b = ab;
-            a = Math.round(140 + 115 * (1 - (d - (radius - 4)) / 4));
-          }
-        }
-        row.writeUInt8(r, x*4); row.writeUInt8(g, x*4+1);
-        row.writeUInt8(b, x*4+2); row.writeUInt8(a, x*4+3);
-      }
-      if (y === 0) {
-        const vv = version % 255;
-        row.writeUInt8(vv, 0); row.writeUInt8(vv, 1);
-        row.writeUInt8(vv, 2); row.writeUInt8(255, 3);
-      }
-      rows.push(row);
+  // ── NORMAL stamp grid ────────────────────────────────────────────────────
+  const cols = 5, rows = 2;
+  const padX = 80, padTop = 24, padBot = 20;
+  const gapX = Math.floor((W - padX * 2) / cols);
+  const gapY = Math.floor((H - padTop - padBot) / rows);
+  const R    = Math.floor(Math.min(gapX, gapY) * 0.44); // 44% of smaller gap
+  const S    = R * 2;
+  const startX = padX + Math.floor(gapX / 2);
+  const startY = padTop + Math.floor(gapY / 2);
+
+  function getStampPixel(px, py, idx) {
+    const row = Math.floor(idx / cols), col = idx % cols;
+    const cx  = startX + col * gapX, cy = startY + row * gapY;
+    const lx  = px - cx, ly = py - cy;
+    const d2  = lx * lx + ly * ly;
+    if (d2 > R * R) return null;
+    if (idx < stamps) {
+      // Filled stamp: accent circle with dark cup cut-out
+      return inCup(lx + R, ly + R, S) ? [...BG, 255] : [ar, ag, ab, 255];
+    } else {
+      // Empty slot: faint ring only
+      const innerR = R - 4;
+      return d2 >= innerR * innerR ? [ar, ag, ab, 75] : null;
     }
   }
-  return makePng(W, H, rows);
+
+  const buf = makePng(W, H, (px, py) => {
+    if (px < 3 && py < 3) return [BG[0], BG[1], vByte, 255];
+    if (py >= ruleY) return [ar, ag, ab, 180];
+    for (let i = 0; i < needed; i++) {
+      const hit = getStampPixel(px, py, i);
+      if (hit) return hit;
+    }
+    return [...BG, 255];
+  });
+  return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-function makeLogoPng() {
-  const W = 160, H = 50;
-  const rows = [];
-  for (let y = 0; y < H; y++) rows.push(Buffer.alloc(W * 4));
-  return makePng(W, H, rows);
+// Logo: 160x50 accent rounded rect
+function makeLogoDataUri(accentHex) {
+  const W = 160, H = 50, r = 8;
+  const [ar, ag, ab] = hexToRgb(accentHex);
+  const buf = makePng(W, H, (x, y) => {
+    const inCorner =
+      (x < r   && y < r   && (x-r)**2   + (y-r)**2   > r*r) ||
+      (x > W-r && y < r   && (x-(W-r))**2 + (y-r)**2   > r*r) ||
+      (x < r   && y > H-r && (x-r)**2   + (y-(H-r))**2 > r*r) ||
+      (x > W-r && y > H-r && (x-(W-r))**2 + (y-(H-r))**2 > r*r);
+    return inCorner ? [0, 0, 0, 0] : [ar, ag, ab, 255];
+  });
+  return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-// WalletWallet
+// ── WalletWallet helpers ──────────────────────────────────────────────────────
 const WW_BASE = 'https://api.walletwallet.dev';
-const WW_AUTH = () => ({ 'Authorization': `Bearer ${WALLETWALLET_KEY}`, 'Content-Type': 'application/json' });
+const WW_AUTH = () => ({
+  'Authorization': `Bearer ${WALLETWALLET_KEY}`,
+  'Content-Type': 'application/json',
+});
 
+// Build pass payload -- uses cafe accent for strip AND logo, with push fields
 function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) {
-  const full = stamps >= STAMPS_NEEDED;
-  const stripPng = makeStripPng(stamps, accent, version);
-  const stripDataUri = `data:image/png;base64,${stripPng.toString('base64')}`;
-  const qrUrl = `${SITE_URL}/staff.html?cafe=${slug}&id=${custId}`;
+  const full      = stamps >= STAMPS_NEEDED;
+  const versionN  = version || 1;
+  const stripUri  = makeStripDataUri(stamps, STAMPS_NEEDED, accent, versionN);
+  const logoUri   = makeLogoDataUri(accent);
+  const qrUrl     = `${SITE_URL}/staff.html?cafe=${slug}&id=${custId}`;
+
+  // changeMessage triggers a live push notification to the customer's phone
+  // when the pass is updated via PUT. Apple Wallet shows it as a banner.
+  const changeMessage = full
+    ? `\u2615 Free coffee ready at ${cafeName}!`
+    : `Stamp added \u2014 ${stamps} of ${STAMPS_NEEDED} at ${cafeName}`;
+
   return {
-    barcodeValue: qrUrl,
-    barcodeFormat: 'QR',
-    logoText: cafeName,
+    barcodeValue:     qrUrl,
+    barcodeFormat:    'QR',
+    logoText:         cafeName,
     organizationName: cafeName,
-    description: `${cafeName} Loyalty Card`,
-    colorPro: '#1a1a1a',
-    stripURLPro: stripDataUri,
+    description:      `${cafeName} Loyalty Card`,
+    colorPro:         '#1a1a1a',
+    stripURLPro:      stripUri,
+    logoURLPro:       logoUri,
+
     primaryFields: full
       ? [{ label: 'REWARD', value: '1 FREE COFFEE' }]
       : [],
+
     secondaryFields: [
       { label: 'MEMBER', value: name },
-      { label: 'STAMPS', value: `${stamps} of ${STAMPS_NEEDED}` },
+      {
+        label:         'STAMPS',
+        value:         full ? `${STAMPS_NEEDED} of ${STAMPS_NEEDED} \u2713` : `${stamps} of ${STAMPS_NEEDED}`,
+        changeMessage, // push notification text on stamp update
+      },
     ],
+
     backFields: [
-      { label: 'CAFE',    value: cafeName },
-      { label: 'UPDATED', value: new Date().toISOString() },
-      { label: 'REF',     value: `v${version}-${Date.now()}` },
+      {
+        label: 'How to redeem',
+        value: `Show this pass at ${cafeName}. One free coffee when you reach ${STAMPS_NEEDED} stamps.`,
+      },
+      { label: 'Member ID', value: custId },
+      {
+        label:         'Last update',
+        value:         `${new Date().toISOString()} v${versionN}`,
+        changeMessage, // also on back so WalletWallet always sends the push
+      },
     ],
+
+    expirationDays:    365,
+    sharingProhibited: true,
   };
 }
 
-// Create a new pass -- returns { shareUrl, serialNumber }
 async function wwCreatePass(payload) {
   const res = await fetch(`${WW_BASE}/api/passes`, {
     method: 'POST',
@@ -234,7 +310,6 @@ async function wwCreatePass(payload) {
   catch { throw new Error(`WalletWallet bad JSON: ${text}`); }
 }
 
-// Update an existing pass -- PUT /api/passes/<serial>
 async function wwUpdatePass(serial, payload) {
   const res = await fetch(`${WW_BASE}/api/passes/${serial}`, {
     method: 'PUT',
@@ -247,32 +322,31 @@ async function wwUpdatePass(serial, payload) {
   }
 }
 
-// Unified: pass serial=null to create, serial=string to update
+// serial=null -> create new pass; serial=string -> update + push
 async function buildPass({ serial, custId, name, stamps, accent, cafeName, slug, version }) {
   const payload = passPayload({ custId, name, stamps, accent, cafeName, slug, version });
   if (!serial) {
     const data = await wwCreatePass(payload);
-    // data = { serialNumber, shareUrl, applePass, googleSaveUrl }
+    // data = { serialNumber, shareUrl, applePass, googleSaveUrl, ... }
     return { passUrl: data.shareUrl, serialNumber: data.serialNumber };
   } else {
     await wwUpdatePass(serial, payload);
     return { passUrl: null, serialNumber: serial };
   }
 }
-// Response helpers
+
+// ── Response helpers ──────────────────────────────────────────────────────────
 function ok(res, data, status = 200) { res.status(status).json({ ok: true, ...data }); }
 function err(res, msg, status = 400) { res.status(status).json({ ok: false, error: msg }); }
 function randomId() { return `CUST-${Math.random().toString(36).slice(2,8).toUpperCase()}`; }
 
-// Main handler
+// ── Main handler ──────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-
-  // WalletWallet push webhook -- GET requests
-  if (req.method === 'GET') return res.status(200).json({ ok: true });
+  if (req.method === 'GET')     return res.status(200).json({ ok: true }); // WW push webhook
 
   let body = {};
   try { body = await readBody(req); } catch { return err(res, 'Bad JSON', 400); }
@@ -280,46 +354,42 @@ export default async function handler(req, res) {
   const { action, slug } = body;
   const supa = db();
 
-  // create-cafe
+  // ── create-cafe ───────────────────────────────────────────────────────────
   if (action === 'create-cafe') {
     const { masterKey, cafeName, cafeSlug, accent, stamp, mode, pin } = body;
     if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
     if (!cafeName || !cafeSlug || !pin) return err(res, 'Missing fields', 400);
-    if (!/^[a-z0-9-]+$/.test(cafeSlug)) return err(res, 'Slug: lowercase letters, numbers and hyphens only', 400);
+    if (!/^[a-z0-9-]+$/.test(cafeSlug)) return err(res, 'Slug: lowercase, numbers and hyphens only', 400);
 
     const pinHash = await hashPin(pin);
     const { error } = await supa.from('cafe_settings').insert({
-      slug: cafeSlug,
-      cafe_name: cafeName,
-      accent: accent || '#c94f2b',
-      stamp: stamp || '\u2615',
-      mode: mode || 'dark',
-      pin_hash: pinHash,
+      slug: cafeSlug, cafe_name: cafeName,
+      accent: accent || '#c94f2b', stamp: stamp || '\u2615',
+      mode: mode || 'dark', pin_hash: pinHash,
     });
     if (error) {
       if (error.code === '23505') return err(res, 'A cafe with that slug already exists', 409);
       return err(res, error.message, 500);
     }
     return ok(res, {
-      message: 'Cafe created',
+      message:   'Cafe created',
       signupUrl: `${SITE_URL}/signup.html?cafe=${cafeSlug}`,
       staffUrl:  `${SITE_URL}/staff.html?cafe=${cafeSlug}`,
     });
   }
 
-  // get-settings
+  // ── get-settings ──────────────────────────────────────────────────────────
   if (action === 'get-settings') {
     if (!slug) return err(res, 'slug required', 400);
     const { data, error } = await supa
       .from('cafe_settings')
       .select('cafe_name, accent, stamp, mode, slug')
-      .eq('slug', slug)
-      .single();
+      .eq('slug', slug).single();
     if (error || !data) return err(res, 'Cafe not found', 404);
     return ok(res, { settings: data });
   }
 
-  // create-pass
+  // ── create-pass ───────────────────────────────────────────────────────────
   if (action === 'create-pass') {
     const { name, email } = body;
     if (!slug || !name) return err(res, 'slug and name required', 400);
@@ -329,8 +399,7 @@ export default async function handler(req, res) {
     if (cafeErr || !cafe) return err(res, 'Cafe not found', 404);
 
     if (email) {
-      const { data: existing } = await supa
-        .from('customers').select('customer_id')
+      const { data: existing } = await supa.from('customers').select('customer_id')
         .eq('cafe_id', cafe.cafe_id).eq('email', email).maybeSingle();
       if (existing) return err(res, 'Email already registered for this cafe', 409);
     }
@@ -350,23 +419,23 @@ export default async function handler(req, res) {
     if (!passUrl) return err(res, 'Pass created but no share URL returned', 500);
 
     const { error: insertErr } = await supa.from('customers').insert({
-      customer_id: custId,
-      serial: serialNumber,
+      customer_id:   custId,
+      serial:        serialNumber,
       serial_number: serialNumber,
       name,
-      email: email || null,
-      stamps: 0,
-      cafe_id: cafe.cafe_id,
-      cafe_name: cafe.cafe_name,
-      accent: cafe.accent,
-      mode: cafe.mode,
+      email:         email || null,
+      stamps:        0,
+      cafe_id:       cafe.cafe_id,
+      cafe_name:     cafe.cafe_name,
+      accent:        cafe.accent,
+      mode:          cafe.mode,
     });
     if (insertErr) return err(res, insertErr.message, 500);
 
     return ok(res, { passUrl, custId });
   }
 
-  // verify-pin
+  // ── verify-pin ────────────────────────────────────────────────────────────
   if (action === 'verify-pin') {
     const { pin } = body;
     if (!slug || !pin) return err(res, 'slug and pin required', 400);
@@ -378,7 +447,7 @@ export default async function handler(req, res) {
     return ok(res, { verified: true });
   }
 
-  // add-stamp
+  // ── add-stamp ─────────────────────────────────────────────────────────────
   if (action === 'add-stamp') {
     const { custId, pin } = body;
     if (!slug || !custId || !pin) return err(res, 'slug, custId, pin required', 400);
@@ -389,23 +458,25 @@ export default async function handler(req, res) {
     const valid = await checkPin(pin, cafe.pin_hash);
     if (!valid) return err(res, 'Wrong PIN', 403);
 
-    const { data: cust } = await supa
-      .from('customers').select('*')
+    const { data: cust } = await supa.from('customers').select('*')
       .eq('customer_id', custId).eq('cafe_id', cafe.cafe_id).single();
     if (!cust) return err(res, 'Customer not found', 404);
     if (cust.stamps >= STAMPS_NEEDED) return err(res, 'Card full -- redeem first', 400);
 
     const newStamps = cust.stamps + 1;
-    const version = (cust.version || 1) + 1;
+    const version   = (cust.version || 1) + 1;
 
     try {
+      // PUT triggers WalletWallet to push a notification to the customer's phone
       await buildPass({
-        serial: cust.serial, custId, name: cust.name, stamps: newStamps,
+        serial: cust.serial_number || cust.serial,
+        custId, name: cust.name, stamps: newStamps,
         accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
       });
     } catch (e) {
       return err(res, `Pass update failed: ${e.message}`, 500);
     }
+
     await supa.from('customers')
       .update({ stamps: newStamps, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
@@ -413,7 +484,7 @@ export default async function handler(req, res) {
     return ok(res, { stamps: newStamps, full: newStamps >= STAMPS_NEEDED });
   }
 
-  // redeem
+  // ── redeem ────────────────────────────────────────────────────────────────
   if (action === 'redeem') {
     const { custId, pin } = body;
     if (!slug || !custId || !pin) return err(res, 'slug, custId, pin required', 400);
@@ -424,8 +495,7 @@ export default async function handler(req, res) {
     const valid = await checkPin(pin, cafe.pin_hash);
     if (!valid) return err(res, 'Wrong PIN', 403);
 
-    const { data: cust } = await supa
-      .from('customers').select('*')
+    const { data: cust } = await supa.from('customers').select('*')
       .eq('customer_id', custId).eq('cafe_id', cafe.cafe_id).single();
     if (!cust) return err(res, 'Customer not found', 404);
     if (cust.stamps < STAMPS_NEEDED) return err(res, 'Not enough stamps to redeem', 400);
@@ -433,20 +503,22 @@ export default async function handler(req, res) {
     const version = (cust.version || 1) + 1;
     try {
       await buildPass({
-        serial: cust.serial, custId, name: cust.name, stamps: 0,
+        serial: cust.serial_number || cust.serial,
+        custId, name: cust.name, stamps: 0,
         accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
       });
     } catch (e) {
       return err(res, `Pass update failed: ${e.message}`, 500);
     }
+
     await supa.from('customers')
-      .update({ stamps: 0, version, updated_at: new Date().toISOString() })
+      .update({ stamps: 0, redeemed: true, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
 
     return ok(res, { redeemed: true, stamps: 0 });
   }
 
-  // get-customer
+  // ── get-customer ──────────────────────────────────────────────────────────
   if (action === 'get-customer') {
     const { custId, pin } = body;
     if (!slug || !custId || !pin) return err(res, 'slug, custId, pin required', 400);
@@ -457,8 +529,7 @@ export default async function handler(req, res) {
     const valid = await checkPin(pin, cafe.pin_hash);
     if (!valid) return err(res, 'Wrong PIN', 403);
 
-    const { data: cust } = await supa
-      .from('customers')
+    const { data: cust } = await supa.from('customers')
       .select('customer_id, name, email, stamps, created_at, updated_at')
       .eq('customer_id', custId).eq('cafe_id', cafe.cafe_id).single();
     if (!cust) return err(res, 'Customer not found', 404);
