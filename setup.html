@@ -8,22 +8,26 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --border: #333;
-    --text: #f0f0f0;
-    --muted: #888;
-    --accent: #c94f2b;
+    --bg:              #f7f4f0;
+    --surface:         #ffffff;
+    --surface2:        #f0ece6;
+    --border:          rgba(0,0,0,0.08);
+    --border-mid:      rgba(0,0,0,0.13);
+    --text:            #1a1a1a;
+    --muted:           #888;
+    --muted2:          #bbb;
+    --accent:          #c94f2b;
+    --accent-light:    #faeee9;
     --accent-contrast: #fff;
-    --radius: 0px;
-    --font: 'IBM Plex Mono', monospace;
+    --radius:          6px;
+    --font:            'IBM Plex Mono', monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     font-family: var(--font);
-    background: var(--bg);
+    background: var(--surface2);
     color: var(--text);
     min-height: 100vh;
     display: flex;
@@ -55,7 +59,7 @@
     display: flex;
     gap: 0;
     margin-bottom: 32px;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
   }
   .step-dot {
     flex: 1;
@@ -75,8 +79,8 @@
   }
 
   .card {
-    border: 1px solid var(--border);
-    background: var(--surface);
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     padding: 28px;
     margin-bottom: 16px;
   }
@@ -100,8 +104,8 @@
 
   input[type=text], input[type=password], input[type=email] {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
     color: var(--text);
     font-family: var(--font);
     font-size: 15px;
@@ -188,8 +192,8 @@
   }
   .stamp-btn {
     aspect-ratio: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
     color: var(--text);
     font-size: 22px;
     cursor: pointer;
@@ -208,13 +212,13 @@
     display: flex;
     gap: 0;
     margin-bottom: 20px;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
     overflow: hidden;
   }
   .mode-btn {
     flex: 1;
     padding: 12px;
-    background: var(--bg);
+    background: var(--surface2);
     border: none;
     color: var(--muted);
     font-family: var(--font);
@@ -263,7 +267,7 @@
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-ghost {
     background: transparent;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
     color: var(--muted);
   }
 
@@ -276,7 +280,7 @@
 
   /* Preview card */
   .preview-card {
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
     padding: 20px;
     margin-bottom: 16px;
     display: flex;
@@ -306,8 +310,8 @@
 
   /* Success */
   .success-box {
-    border: 1px solid var(--accent);
-    background: var(--surface);
+    border: 1.5px solid var(--accent);
+    background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     padding: 28px;
   }
   .success-title {
@@ -321,8 +325,8 @@
     margin-bottom: 24px;
   }
   .url-block {
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
     padding: 14px;
     font-size: 12px;
     margin-bottom: 8px;
@@ -340,7 +344,7 @@
     font-size: 10px;
     padding: 4px 10px;
     background: transparent;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
     color: var(--muted);
     font-family: var(--font);
     cursor: pointer;
@@ -357,20 +361,13 @@
     border: 1px solid;
     margin-bottom: 12px;
   }
-  .msg.error { border-color: #c94f2b; color: #e87 ; background: #1f1210; }
+  .msg.error { border-color: #f5c4b3; color: #993c1d; background: var(--accent-light); }
   .msg.info  { border-color: var(--border); color: var(--muted); }
 
   /* Field separator */
   .sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
-  /* Light mode overrides */
-  body.light {
-    --bg: #f5f0eb;
-    --surface: #fff;
-    --border: #d0c8c0;
-    --text: #1a1a1a;
-    --muted: #888;
-  }
+
 </style>
 </head>
 <body>
@@ -840,8 +837,9 @@ async function createCafe() {
       });
       const uploadData = await uploadRes.json();
       if (!uploadData.ok) {
-        // Non-fatal -- cafe is created, logo just didn't upload
-        console.warn('Logo upload failed:', uploadData.error);
+        // Show the error but don't block — cafe is already created
+        showErr(`Logo upload failed: ${uploadData.error}. Your cafe was created — you can re-upload later.`);
+        // Still show success below
       }
     }
 

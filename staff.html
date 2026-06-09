@@ -8,18 +8,24 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --border: #333;
-    --text: #f0f0f0;
-    --muted: #888;
-    --accent: #c94f2b;
-    --accent-contrast: #fff;
-    --green: #2bc97a;
-    --red: #c94f2b;
-    --font: 'IBM Plex Mono', monospace;
+    --accent:       #c94f2b;
+    --accent-light: #faeee9;
+    --accent-dark:  #993c1d;
+    --bg:           #f7f4f0;
+    --surface:      #ffffff;
+    --surface2:     #f0ece6;
+    --border:       rgba(0,0,0,0.08);
+    --border-mid:   rgba(0,0,0,0.13);
+    --text:         #1a1a1a;
+    --muted:        #888;
+    --muted2:       #bbb;
+    --green:        #2a9d5c;
+    --green-light:  #E1F5EE;
+    --red:          #c94f2b;
+    --font:         'IBM Plex Mono', monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     font-family: var(--font);
     background: var(--bg);
@@ -28,93 +34,116 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 16px;
+    padding: 32px 16px;
+    -webkit-font-smoothing: antialiased;
   }
+
   .wrap { width: 100%; max-width: 420px; }
 
-  .logo { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .logo { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
   .logo span { color: var(--accent); }
-  .cafe-name { font-size: 12px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 36px; }
+  .cafe-name {
+    font-size: 11px; color: var(--muted); letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 32px;
+  }
 
-  .card { border: 1px solid var(--border); background: var(--surface); padding: 28px; }
-  h2 { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
 
-  label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  h2 {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+
+  label {
+    display: block; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
   input {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 6px;
     color: var(--text);
     font-family: var(--font);
     font-size: 20px;
     padding: 12px 14px;
     outline: none;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     text-align: center;
     letter-spacing: 4px;
     transition: border-color 0.2s;
   }
-  input:focus { border-color: var(--accent); }
+  input:focus { border-color: var(--accent); background: var(--surface); }
+  input::placeholder { color: var(--muted2); letter-spacing: 2px; }
 
   .btn {
     width: 100%;
-    padding: 16px;
+    padding: 14px;
     background: var(--accent);
-    color: var(--accent-contrast);
+    color: #fff;
     font-family: var(--font);
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     border: none;
+    border-radius: 6px;
     cursor: pointer;
     transition: opacity 0.2s;
+    margin-top: 2px;
   }
-  .btn:hover { opacity: 0.85; }
+  .btn:hover { opacity: 0.88; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-green {
-    background: var(--green);
-    color: #0e1f15;
-  }
+
+  .btn-green { background: var(--green); }
   .btn-ghost {
     background: transparent;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
     color: var(--muted);
     margin-top: 8px;
   }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
 
-  .msg { font-size: 12px; padding: 10px 14px; border: 1px solid; margin-bottom: 12px; }
-  .msg.error { border-color: var(--red); color: #e87; background: #1f1210; }
-  .msg.success { border-color: var(--green); color: var(--green); background: #0e1f15; }
-  .msg.info { border-color: var(--border); color: var(--muted); }
+  .msg {
+    font-size: 12px; padding: 10px 14px;
+    border-radius: 6px; border: 1px solid; margin-bottom: 12px;
+  }
+  .msg.error   { border-color: #f5c4b3; color: var(--red);   background: var(--accent-light); }
+  .msg.success { border-color: #9FE1CB; color: var(--green); background: var(--green-light); }
+  .msg.info    { border-color: var(--border-mid); color: var(--muted); background: var(--surface2); }
 
   /* Customer card */
   .cust-card {
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 10px;
     padding: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
-  .cust-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-  .cust-id { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  .cust-name { font-size: 20px; font-weight: 700; margin-bottom: 3px; letter-spacing: -0.5px; }
+  .cust-id   { font-size: 10px; color: var(--muted2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; }
 
   /* Stamp grid */
   .stamp-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: 7px;
+    margin-bottom: 18px;
   }
   .stamp-circle {
-    aspect-ratio: 1;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: background 0.3s, border 0.3s, opacity 0.3s;
+    aspect-ratio: 1; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: background 0.3s, border-color 0.3s, opacity 0.3s;
   }
   .stamp-circle.filled { background: var(--accent); border: 2px solid var(--accent); }
-  .stamp-circle.empty  { border: 2px solid var(--border); opacity: 0.4; }
+  .stamp-circle.empty  { border: 1.5px solid var(--border-mid); opacity: 0.5; background: var(--surface); }
   .stamp-circle.new    { background: var(--green); border: 2px solid var(--green); animation: pop 0.4s ease; }
 
   @keyframes pop {
@@ -124,74 +153,54 @@
   }
 
   .stamp-count {
-    font-size: 28px;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 4px;
+    font-size: 32px; font-weight: 700;
+    text-align: center; margin-bottom: 4px; color: var(--text);
   }
   .stamp-label {
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    text-align: center;
-    margin-bottom: 16px;
+    font-size: 10px; color: var(--muted); letter-spacing: 2px;
+    text-transform: uppercase; text-align: center; margin-bottom: 0;
   }
 
   /* Full card banner */
   .full-banner {
-    background: var(--green);
-    color: #0e1f15;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 10px;
-    text-align: center;
-    margin-bottom: 16px;
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid #9FE1CB;
+    border-radius: 6px;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 10px; text-align: center; margin-bottom: 14px;
   }
 
   /* PIN gate */
-  .pin-desc { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .pin-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.65; }
 
   /* Loading */
-  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-  .not-found { text-align: center; padding: 20px 0; }
+  .loading {
+    text-align: center; padding: 48px 0;
+    color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .not-found { text-align: center; padding: 24px 0; }
   .not-found h2 { color: var(--red); margin-bottom: 8px; }
-  .not-found p { font-size: 12px; color: var(--muted); }
+  .not-found p  { font-size: 13px; color: var(--muted); }
 
   /* Logout bar */
   .logout-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 14px;
   }
   .logout-btn {
     background: none;
-    border: 1px solid var(--border);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 4px;
     color: var(--muted);
     font-family: var(--font);
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    cursor: pointer;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 10px; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
   }
   .logout-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* Light mode */
-  body.light {
-    --bg: #f5f0eb;
-    --surface: #fff;
-    --border: #d0c8c0;
-    --text: #1a1a1a;
-    --muted: #888;
-  }
 </style>
 </head>
 <body>
@@ -202,7 +211,6 @@
   </div>
   <div class="cafe-name" id="cafeName">Loading...</div>
 
-  <!-- Loading -->
   <div class="loading" id="loadingState">Loading...</div>
 
   <!-- PIN gate -->
@@ -223,42 +231,41 @@
       <button class="logout-btn" onclick="logout()">Lock</button>
     </div>
 
-    <div class="msg error"  id="termErr"     style="display:none"></div>
+    <div class="msg error"   id="termErr"     style="display:none"></div>
     <div class="msg success" id="termSuccess" style="display:none"></div>
     <div class="msg info"    id="termInfo"    style="display:none"></div>
 
-    <!-- Customer loaded from QR -->
+    <!-- Customer view -->
     <div id="custView" style="display:none">
       <div class="cust-card">
         <div class="cust-name" id="custName">—</div>
-        <div class="cust-id" id="custId">—</div>
-
+        <div class="cust-id"   id="custId">—</div>
         <div class="full-banner" id="fullBanner" style="display:none">Full card — ready to redeem</div>
-
         <div class="stamp-grid" id="stampGrid"></div>
         <div class="stamp-count" id="stampCount">0</div>
         <div class="stamp-label">of 10 stamps</div>
       </div>
-
       <button class="btn btn-green" id="stampBtn" onclick="doStamp()">Add Stamp ☕</button>
-      <button class="btn" id="redeemBtn" onclick="doRedeem()" style="display:none;margin-top:8px;background:#2bc97a;color:#0e1f15">Redeem Free Coffee ✓</button>
+      <button class="btn" id="redeemBtn" onclick="doRedeem()"
+              style="display:none;margin-top:8px;background:var(--green)">Redeem Free Coffee ✓</button>
       <button class="btn btn-ghost" onclick="clearCustomer()">Scan different card</button>
     </div>
 
-    <!-- No QR / manual lookup -->
+    <!-- No customer -->
     <div id="noCustomer" style="display:none">
       <div class="card">
         <h2>Scan or Enter ID</h2>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Point camera at customer's Apple Wallet card QR code, or enter their ID manually.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Point camera at customer's Apple Wallet QR code, or enter their ID manually.</p>
         <label>Customer ID</label>
-        <input type="text" id="manualId" placeholder="CUST-XXXXXX" style="font-size:15px;letter-spacing:2px;text-align:left"
+        <input type="text" id="manualId" placeholder="CUST-XXXXXX"
+               style="font-size:14px;letter-spacing:2px;text-align:left"
                onkeydown="if(event.key==='Enter')loadCustomer(this.value.trim().toUpperCase())">
         <button class="btn" onclick="loadCustomer(document.getElementById('manualId').value.trim().toUpperCase())">Load Customer →</button>
       </div>
     </div>
   </div>
 
-  <!-- Not found -->
+  <!-- Cafe not found -->
   <div class="card" id="cafeNotFound" style="display:none">
     <div class="not-found">
       <h2>Cafe not found</h2>
@@ -271,22 +278,19 @@
 <script>
 let cafeSlug = null;
 let cafeSettings = null;
-let sessionPin = null; // cached for this session only
+let sessionPin = null;
 let currentCustId = null;
 let currentStamps = 0;
 
-// ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   const params = new URLSearchParams(location.search);
   cafeSlug = params.get('cafe');
   const custIdFromQr = params.get('id');
-
   if (!cafeSlug) {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('cafeNotFound').style.display = '';
     return;
   }
-
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -299,16 +303,11 @@ async function init() {
       document.getElementById('cafeNotFound').style.display = '';
       return;
     }
-
     cafeSettings = data.settings;
     applyTheme(cafeSettings);
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('terminalCafeName').textContent = cafeSettings.cafe_name;
-
-    // Show PIN gate
     document.getElementById('pinGate').style.display = '';
-
-    // Store QR custId to load after PIN
     if (custIdFromQr) window._pendingCustId = custIdFromQr;
   } catch (e) {
     document.getElementById('loadingState').textContent = 'Could not load cafe.';
@@ -316,7 +315,6 @@ async function init() {
 }
 
 function applyTheme(s) {
-  if (s.mode === 'light') document.body.classList.add('light');
   document.documentElement.style.setProperty('--accent', s.accent);
   document.getElementById('cafeName').textContent = s.cafe_name;
   document.title = `Staff Terminal — ${s.cafe_name}`;
@@ -326,15 +324,11 @@ function applyTheme(s) {
   }
 }
 
-// ── PIN gate ─────────────────────────────────────────────────────────────────
 async function verifyPin() {
   const pin = document.getElementById('pinInput').value;
   if (!pin) return showPinErr('Enter your PIN.');
-
   const btn = document.getElementById('pinBtn');
-  btn.disabled = true;
-  btn.textContent = 'Verifying...';
-
+  btn.disabled = true; btn.textContent = 'Verifying...';
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -343,12 +337,9 @@ async function verifyPin() {
     });
     const data = await res.json();
     if (!data.ok) return showPinErr(data.error || 'Wrong PIN.');
-
     sessionPin = pin;
     document.getElementById('pinGate').style.display = 'none';
     document.getElementById('terminal').style.display = '';
-
-    // Load pending customer from QR
     if (window._pendingCustId) {
       await loadCustomer(window._pendingCustId);
       window._pendingCustId = null;
@@ -358,29 +349,25 @@ async function verifyPin() {
   } catch (e) {
     showPinErr('Network error — try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Unlock →';
+    btn.disabled = false; btn.textContent = 'Unlock →';
   }
 }
 
 function showPinErr(msg) {
   const el = document.getElementById('pinErr');
-  el.textContent = msg;
-  el.style.display = '';
+  el.textContent = msg; el.style.display = '';
   document.getElementById('pinBtn').disabled = false;
   document.getElementById('pinBtn').textContent = 'Unlock →';
 }
 
 function logout() {
-  sessionPin = null;
-  currentCustId = null;
+  sessionPin = null; currentCustId = null;
   document.getElementById('terminal').style.display = 'none';
   document.getElementById('pinInput').value = '';
   document.getElementById('pinErr').style.display = 'none';
   document.getElementById('pinGate').style.display = '';
 }
 
-// ── Customer loading ─────────────────────────────────────────────────────────
 function showNoCustomer() {
   document.getElementById('custView').style.display = 'none';
   document.getElementById('noCustomer').style.display = '';
@@ -389,7 +376,6 @@ function showNoCustomer() {
 
 function clearCustomer() {
   currentCustId = null;
-  // Strip custId from URL without full reload
   const url = new URL(location.href);
   url.searchParams.delete('id');
   history.replaceState({}, '', url.toString());
@@ -399,20 +385,13 @@ function clearCustomer() {
 async function loadCustomer(custId) {
   if (!custId) return;
   clearMsgs();
-
   const res = await fetch(CONFIG.apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'get-customer', slug: cafeSlug, custId, pin: sessionPin }),
   });
   const data = await res.json();
-
-  if (!data.ok) {
-    showInfo(data.error || 'Customer not found.');
-    showNoCustomer();
-    return;
-  }
-
+  if (!data.ok) { showInfo(data.error || 'Customer not found.'); showNoCustomer(); return; }
   currentCustId = custId;
   currentStamps = data.customer.stamps;
   renderCustomer(data.customer);
@@ -421,19 +400,14 @@ async function loadCustomer(custId) {
 function renderCustomer(cust) {
   document.getElementById('noCustomer').style.display = 'none';
   document.getElementById('custView').style.display = '';
-
   document.getElementById('custName').textContent = cust.name;
-  document.getElementById('custId').textContent = cust.customer_id;
-
-  const stamps = cust.stamps;
-  const full = stamps >= CONFIG.stampsNeeded;
-
-  document.getElementById('stampCount').textContent = stamps;
+  document.getElementById('custId').textContent   = cust.customer_id;
+  const full = cust.stamps >= CONFIG.stampsNeeded;
+  document.getElementById('stampCount').textContent = cust.stamps;
   document.getElementById('fullBanner').style.display = full ? '' : 'none';
-  document.getElementById('stampBtn').style.display = full ? 'none' : '';
-  document.getElementById('redeemBtn').style.display = full ? '' : 'none';
-
-  buildStampDots(stamps, -1);
+  document.getElementById('stampBtn').style.display   = full ? 'none' : '';
+  document.getElementById('redeemBtn').style.display  = full ? '' : 'none';
+  buildStampDots(cust.stamps, -1);
 }
 
 function buildStampDots(stamps, newIdx) {
@@ -442,29 +416,18 @@ function buildStampDots(stamps, newIdx) {
   const stamp = cafeSettings?.stamp || '☕';
   for (let i = 0; i < CONFIG.stampsNeeded; i++) {
     const c = document.createElement('div');
-    if (i === newIdx) {
-      c.className = 'stamp-circle new';
-      c.textContent = stamp;
-    } else if (i < stamps) {
-      c.className = 'stamp-circle filled';
-      c.textContent = stamp;
-    } else {
-      c.className = 'stamp-circle empty';
-      c.textContent = stamp;
-    }
+    if      (i === newIdx) { c.className = 'stamp-circle new';    c.textContent = stamp; }
+    else if (i < stamps)   { c.className = 'stamp-circle filled'; c.textContent = stamp; }
+    else                   { c.className = 'stamp-circle empty';  c.textContent = stamp; }
     grid.appendChild(c);
   }
 }
 
-// ── Stamp ────────────────────────────────────────────────────────────────────
 async function doStamp() {
   if (!currentCustId) return;
   clearMsgs();
-
   const btn = document.getElementById('stampBtn');
-  btn.disabled = true;
-  btn.textContent = 'Adding...';
-
+  btn.disabled = true; btn.textContent = 'Adding...';
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -472,19 +435,15 @@ async function doStamp() {
       body: JSON.stringify({ action: 'add-stamp', slug: cafeSlug, custId: currentCustId, pin: sessionPin }),
     });
     const data = await res.json();
-
     if (!data.ok) return showTermErr(data.error || 'Failed to add stamp.');
-
     const prev = currentStamps;
     currentStamps = data.stamps;
-
     document.getElementById('stampCount').textContent = currentStamps;
-    buildStampDots(currentStamps, prev); // animate the new one
-
+    buildStampDots(currentStamps, prev);
     if (data.full) {
       document.getElementById('fullBanner').style.display = '';
-      document.getElementById('stampBtn').style.display = 'none';
-      document.getElementById('redeemBtn').style.display = '';
+      document.getElementById('stampBtn').style.display   = 'none';
+      document.getElementById('redeemBtn').style.display  = '';
       showSuccess('Card complete! Customer can now redeem a free coffee.');
     } else {
       showSuccess(`Stamp added — ${currentStamps} of ${CONFIG.stampsNeeded}`);
@@ -492,21 +451,16 @@ async function doStamp() {
   } catch (e) {
     showTermErr('Network error — try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Add Stamp ☕';
+    btn.disabled = false; btn.textContent = 'Add Stamp ☕';
   }
 }
 
-// ── Redeem ───────────────────────────────────────────────────────────────────
 async function doRedeem() {
   if (!currentCustId) return;
   if (!confirm('Confirm: redeem free coffee and reset card?')) return;
   clearMsgs();
-
   const btn = document.getElementById('redeemBtn');
-  btn.disabled = true;
-  btn.textContent = 'Redeeming...';
-
+  btn.disabled = true; btn.textContent = 'Redeeming...';
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -514,43 +468,27 @@ async function doRedeem() {
       body: JSON.stringify({ action: 'redeem', slug: cafeSlug, custId: currentCustId, pin: sessionPin }),
     });
     const data = await res.json();
-
     if (!data.ok) return showTermErr(data.error || 'Redemption failed.');
-
     currentStamps = 0;
-    document.getElementById('stampCount').textContent = 0;
+    document.getElementById('stampCount').textContent  = 0;
     document.getElementById('fullBanner').style.display = 'none';
-    document.getElementById('redeemBtn').style.display = 'none';
-    document.getElementById('stampBtn').style.display = '';
+    document.getElementById('redeemBtn').style.display  = 'none';
+    document.getElementById('stampBtn').style.display   = '';
     buildStampDots(0, -1);
     showSuccess('Redeemed! Card reset — enjoy the coffee.');
   } catch (e) {
     showTermErr('Network error — try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Redeem Free Coffee ✓';
+    btn.disabled = false; btn.textContent = 'Redeem Free Coffee ✓';
   }
 }
 
-// ── Message helpers ───────────────────────────────────────────────────────────
 function clearMsgs() {
   ['termErr','termSuccess','termInfo'].forEach(id => document.getElementById(id).style.display = 'none');
 }
-function showTermErr(msg) {
-  const el = document.getElementById('termErr');
-  el.textContent = msg;
-  el.style.display = '';
-}
-function showSuccess(msg) {
-  const el = document.getElementById('termSuccess');
-  el.textContent = msg;
-  el.style.display = '';
-}
-function showInfo(msg) {
-  const el = document.getElementById('termInfo');
-  el.textContent = msg;
-  el.style.display = '';
-}
+function showTermErr(msg) { const el = document.getElementById('termErr');    el.textContent = msg; el.style.display = ''; }
+function showSuccess(msg) { const el = document.getElementById('termSuccess');el.textContent = msg; el.style.display = ''; }
+function showInfo(msg)    { const el = document.getElementById('termInfo');   el.textContent = msg; el.style.display = ''; }
 
 init();
 </script>

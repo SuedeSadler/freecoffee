@@ -8,16 +8,23 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --border: #333;
-    --text: #f0f0f0;
-    --muted: #888;
-    --accent: #c94f2b;
-    --accent-contrast: #fff;
-    --font: 'IBM Plex Mono', monospace;
+    --accent:       #c94f2b;
+    --accent-light: #faeee9;
+    --accent-dark:  #993c1d;
+    --bg:           #f7f4f0;
+    --surface:      #ffffff;
+    --surface2:     #f0ece6;
+    --border:       rgba(0,0,0,0.08);
+    --border-mid:   rgba(0,0,0,0.13);
+    --text:         #1a1a1a;
+    --muted:        #888;
+    --muted2:       #bbb;
+    --green:        #2a9d5c;
+    --red:          #c94f2b;
+    --font:         'IBM Plex Mono', monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     font-family: var(--font);
     background: var(--bg);
@@ -26,145 +33,140 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 16px;
+    padding: 32px 16px;
+    -webkit-font-smoothing: antialiased;
   }
+
   .wrap { width: 100%; max-width: 420px; }
 
-  .logo { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .logo { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
   .logo span { color: var(--accent); }
-  .cafe-name { font-size: 12px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 36px; }
+  .cafe-name {
+    font-size: 11px; color: var(--muted); letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 32px;
+  }
 
-  .card { border: 1px solid var(--border); background: var(--surface); padding: 28px; }
-  h2 { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-  .desc { font-size: 12px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
 
-  label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  h2 {
+    font-size: 16px; font-weight: 700; margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .desc { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.65; }
+
+  label {
+    display: block; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
   input {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface2);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 6px;
     color: var(--text);
     font-family: var(--font);
-    font-size: 15px;
-    padding: 12px 14px;
+    font-size: 14px;
+    padding: 11px 14px;
     outline: none;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     transition: border-color 0.2s;
   }
-  input:focus { border-color: var(--accent); }
+  input:focus { border-color: var(--accent); background: var(--surface); }
+  input::placeholder { color: var(--muted2); }
 
   .btn {
     width: 100%;
-    padding: 16px;
+    padding: 14px;
     background: var(--accent);
-    color: var(--accent-contrast);
+    color: #fff;
     font-family: var(--font);
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     border: none;
+    border-radius: 6px;
     cursor: pointer;
     transition: opacity 0.2s;
   }
-  .btn:hover { opacity: 0.85; }
+  .btn:hover { opacity: 0.88; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Stamp preview strip */
   .stamp-strip {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    margin-bottom: 24px;
+    display: flex; gap: 5px; justify-content: center; margin-bottom: 24px;
   }
   .stamp-circle {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    border: 2px solid var(--accent);
-    opacity: 0.3;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1.5px solid var(--accent); opacity: 0.25;
   }
 
-  .msg { font-size: 12px; padding: 10px 14px; border: 1px solid; margin-bottom: 12px; }
-  .msg.error { border-color: #c94f2b; color: #e87; background: #1f1210; }
-  .msg.success { border-color: #2bc97a; color: #2bc97a; background: #0e1f15; }
+  .msg {
+    font-size: 12px; padding: 10px 14px; border-radius: 6px;
+    border: 1px solid; margin-bottom: 12px;
+  }
+  .msg.error   { border-color: #f5c4b3; color: var(--red);   background: var(--accent-light); }
+  .msg.success { border-color: #9FE1CB; color: var(--green); background: #E1F5EE; }
 
-  /* Success state */
-  .success-content { text-align: center; padding: 16px 0; }
-  .big-stamp { font-size: 64px; margin-bottom: 12px; }
+  .success-content { text-align: center; padding: 12px 0; }
+  .big-stamp { font-size: 56px; margin-bottom: 14px; }
   .success-h { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-  .success-sub { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+  .success-sub {
+    font-size: 13px; color: var(--muted); line-height: 1.65;
+    margin-bottom: 24px;
+  }
   .wallet-btn {
     display: inline-block;
-    background: var(--accent);
-    color: var(--accent-contrast);
-    font-family: var(--font);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    padding: 14px 28px;
-    text-decoration: none;
-    transition: opacity 0.2s;
+    background: var(--accent); color: #fff;
+    font-family: var(--font); font-size: 12px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 14px 28px; border-radius: 6px;
+    text-decoration: none; transition: opacity 0.2s;
   }
-  .wallet-btn:hover { opacity: 0.85; }
+  .wallet-btn:hover { opacity: 0.88; }
 
-  /* Light mode */
-  body.light {
-    --bg: #f5f0eb;
-    --surface: #fff;
-    --border: #d0c8c0;
-    --text: #1a1a1a;
-    --muted: #888;
+  .loading {
+    text-align: center; padding: 48px 0;
+    color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
   }
-
-  /* Loading spinner */
-  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-  .not-found { text-align: center; padding: 40px; }
-  .not-found h2 { color: #c94f2b; margin-bottom: 8px; }
-  .not-found p { font-size: 12px; color: var(--muted); }
+  .not-found { text-align: center; padding: 32px 0; }
+  .not-found h2 { color: var(--red); margin-bottom: 8px; }
+  .not-found p  { font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="logo">Lucky<span>Cup</span></div>
-  <div id="cafeLogoWrap" style="display:none;margin-bottom:16px;text-align:left">
-    <img id="cafeLogo" src="" alt="" style="max-height:56px;max-width:180px;object-fit:contain">
+  <div id="cafeLogoWrap" style="display:none;margin-bottom:14px">
+    <img id="cafeLogo" src="" alt="" style="max-height:52px;max-width:180px;object-fit:contain">
   </div>
   <div class="cafe-name" id="cafeName">Loading...</div>
 
-  <!-- Loading state -->
   <div class="loading" id="loadingState">Loading cafe...</div>
 
-  <!-- Not found -->
   <div class="card not-found" id="notFound" style="display:none">
     <h2>Cafe not found</h2>
     <p>Check the link and try again.</p>
   </div>
 
-  <!-- Sign up form -->
   <div class="card" id="formCard" style="display:none">
     <h2>Get your loyalty card</h2>
     <p class="desc">Sign up for a free digital stamp card — saved directly to your Apple Wallet. Collect 10 stamps, get a free coffee.</p>
-
     <div class="stamp-strip" id="stampStrip"></div>
-
     <div class="msg error" id="errMsg" style="display:none"></div>
-
     <label>Your Name</label>
     <input type="text" id="nameInput" placeholder="First name" autocomplete="given-name">
-
     <label>Email (optional)</label>
     <input type="email" id="emailInput" placeholder="your@email.com" autocomplete="email">
-
     <button class="btn" id="signupBtn" onclick="doSignup()">Get My Card →</button>
   </div>
 
-  <!-- Success -->
   <div class="card" id="successCard" style="display:none">
     <div class="success-content">
       <div class="big-stamp" id="bigStamp">☕</div>
@@ -183,14 +185,12 @@ let cafeSettings = null;
 async function init() {
   const params = new URLSearchParams(location.search);
   cafeSlug = params.get('cafe');
-
   if (!cafeSlug) {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('cafeName').textContent = '';
     document.getElementById('notFound').style.display = '';
     return;
   }
-
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -203,7 +203,6 @@ async function init() {
       document.getElementById('notFound').style.display = '';
       return;
     }
-
     cafeSettings = data.settings;
     applyTheme(cafeSettings);
     document.getElementById('loadingState').style.display = 'none';
@@ -215,7 +214,6 @@ async function init() {
 }
 
 function applyTheme(s) {
-  if (s.mode === 'light') document.body.classList.add('light');
   document.documentElement.style.setProperty('--accent', s.accent);
   document.getElementById('cafeName').textContent = s.cafe_name;
   document.title = `Sign Up — ${s.cafe_name}`;
@@ -237,15 +235,12 @@ function buildStampStrip() {
 }
 
 async function doSignup() {
-  const name = document.getElementById('nameInput').value.trim();
+  const name  = document.getElementById('nameInput').value.trim();
   const email = document.getElementById('emailInput').value.trim();
-
   if (!name) return showErr('Please enter your name.');
-
   const btn = document.getElementById('signupBtn');
   btn.disabled = true;
   btn.textContent = 'Signing up...';
-
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -254,11 +249,8 @@ async function doSignup() {
     });
     const data = await res.json();
     if (!data.ok) return showErr(data.error || 'Something went wrong.');
-
-    // Success!
     document.getElementById('formCard').style.display = 'none';
-    const sCard = document.getElementById('successCard');
-    sCard.style.display = '';
+    document.getElementById('successCard').style.display = '';
     document.getElementById('bigStamp').textContent = cafeSettings?.stamp || '☕';
     document.getElementById('walletLink').href = data.passUrl;
   } catch (e) {

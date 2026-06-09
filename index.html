@@ -3,613 +3,483 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lucky Cup — Your Cafe Name</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>LuckyCup — Digital loyalty cards for cafes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" rel="stylesheet">
 <style>
-  /* ── CONFIG: change these to match your cafe ── */
-  :root {
-    --cafe-name: "Your Cafe";
-    --api-key: "ww_live_REPLACE_WITH_YOUR_KEY";
-    --cafe-color: #1a0a00;
-    --cream: #f5ede0;
-    --gold: #c8922a;
-    --gold-light: #e8b84b;
-    --espresso: #2d1206;
-    --foam: #fdf6ec;
-    --loss: #5a3a2a;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent:      #c94f2b;
+  --accent-light:#faeee9;
+  --accent-dark: #993c1d;
+  --bg:          #f7f4f0;
+  --surface:     #ffffff;
+  --surface2:    #f0ece6;
+  --border:      rgba(0,0,0,0.08);
+  --border-mid:  rgba(0,0,0,0.13);
+  --text:        #1a1a1a;
+  --muted:       #888;
+  --muted2:      #bbb;
+  --font:        'IBM Plex Mono', monospace;
+}
 
-  body {
-    min-height: 100vh;
-    background: var(--espresso);
-    font-family: 'DM Sans', sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    position: relative;
-  }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
 
-  /* steam background rings */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 50% 110%, #c8922a18 0%, transparent 70%),
-      radial-gradient(ellipse 80% 60% at 20% -10%, #ffffff06 0%, transparent 60%);
-    pointer-events: none;
-  }
+.container { max-width: 1060px; margin: 0 auto; padding: 0 40px; }
 
-  /* floating coffee ring decorations */
-  .ring {
-    position: fixed;
-    border-radius: 50%;
-    border: 1px solid #c8922a12;
-    pointer-events: none;
-  }
-  .ring-1 { width: 600px; height: 600px; top: -200px; right: -200px; }
-  .ring-2 { width: 400px; height: 400px; bottom: -150px; left: -150px; border-color: #c8922a08; }
-  .ring-3 { width: 200px; height: 200px; top: 10%; left: 5%; border-color: #c8922a10; }
+section { border-bottom: 1px solid var(--border); padding: 80px 0; }
+section:last-child { border-bottom: none; }
 
-  .card {
-    background: var(--cream);
-    border-radius: 28px;
-    width: min(420px, 94vw);
-    min-height: 520px;
-    padding: 48px 40px 44px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    box-shadow:
-      0 0 0 1px rgba(200,146,42,0.2),
-      0 40px 80px rgba(0,0,0,0.5),
-      0 0 120px rgba(200,146,42,0.08);
-  }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
 
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
-  }
+h1 { font-size: clamp(32px, 4.5vw, 54px); font-weight: 700; line-height: 1.08; letter-spacing: -1.5px; }
+h2 { font-size: clamp(24px, 3vw, 36px); font-weight: 700; line-height: 1.1; letter-spacing: -.8px; }
+h3 { font-size: 15px; font-weight: 500; }
 
-  /* ── IDLE STATE ── */
-  .state { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0; }
-  .state.hidden { display: none; }
+.acc { color: var(--accent); }
 
-  .cup-wrap {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    margin-bottom: 28px;
-  }
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(247,244,240,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 1060px; margin: 0 auto; padding: 0 40px;
+  height: 56px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-logo { font-size: 16px; font-weight: 700; letter-spacing: -.5px; }
+.nav-links { display: flex; gap: 28px; align-items: center; }
+.nav-links a { font-size: 12px; color: var(--muted); transition: color .15s; }
+.nav-links a:hover { color: var(--text); }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; background: var(--accent); color: #fff;
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  letter-spacing: .5px; border: none; cursor: pointer; border-radius: var(--border-radius-md, 6px);
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-outline {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; background: transparent; color: var(--text);
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  letter-spacing: .5px; border: 1.5px solid var(--border-mid); cursor: pointer; border-radius: var(--border-radius-md, 6px);
+  transition: border-color .15s;
+}
+.btn-outline:hover { border-color: var(--text); }
 
-  .cup-svg { width: 120px; height: 120px; }
+/* HERO */
+#hero { padding: 96px 0 88px; }
+.hero-grid { display: grid; grid-template-columns: 1fr 340px; gap: 56px; align-items: center; }
+.hero-copy h1 { margin-bottom: 20px; }
+.hero-copy h1 em { font-style: normal; color: var(--accent); }
+.hero-sub { font-size: 15px; color: var(--muted); line-height: 1.75; margin-bottom: 32px; max-width: 400px; }
+.hero-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
+.trust-row { display: flex; gap: 20px; flex-wrap: wrap; }
+.trust-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+.trust-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent-light); display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--accent); flex-shrink: 0;
+}
 
-  @keyframes steam1 {
-    0%,100% { transform: translateY(0) scaleX(1); opacity: 0.6; }
-    50% { transform: translateY(-12px) scaleX(1.3); opacity: 0; }
-  }
-  @keyframes steam2 {
-    0%,100% { transform: translateY(0) scaleX(1); opacity: 0.4; }
-    50% { transform: translateY(-10px) scaleX(0.8); opacity: 0; }
-  }
-  .steam-1 { animation: steam1 2.2s ease-in-out infinite; transform-origin: bottom center; }
-  .steam-2 { animation: steam2 2.2s ease-in-out infinite 0.7s; transform-origin: bottom center; }
-  .steam-3 { animation: steam1 2.4s ease-in-out infinite 1.4s; transform-origin: bottom center; }
+/* PHONE */
+.phone {
+  width: 240px; background: #111; border-radius: 30px;
+  padding: 14px; border: 1.5px solid #222; margin: 0 auto;
+}
+.phone-pill { width: 70px; height: 7px; background: #1e1e1e; border-radius: 4px; margin: 0 auto 12px; }
+.pass { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 14px; overflow: hidden; }
+.pass-header { padding: 12px 14px 8px; display: flex; justify-content: space-between; align-items: flex-start; }
+.pass-cafe-lbl { font-size: 8px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+.pass-title { font-size: 15px; color: #fff; font-weight: 500; }
+.pass-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.pass-strip {
+  background: #111; margin: 0 10px 10px; border-radius: 9px;
+  padding: 8px 7px; display: grid; grid-template-columns: repeat(5,1fr); gap: 4px;
+}
+.pass-footer { padding: 0 14px 12px; display: flex; justify-content: space-between; }
+.pass-fld-lbl { font-size: 8px; color: #555; text-transform: uppercase; letter-spacing: 1.5px; }
+.pass-fld-val { font-size: 12px; color: #fff; margin-top: 2px; font-weight: 500; }
+.pass-fld-val.hi { color: var(--accent); }
+.notif {
+  background: #141414; border: 1px solid #222; border-radius: 12px;
+  padding: 9px 12px; margin-top: 9px; display: flex; gap: 8px; align-items: center;
+}
+.notif-icon { width: 26px; height: 26px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.notif-t { font-size: 10px; color: #fff; font-weight: 500; }
+.notif-s { font-size: 9px; color: #666; margin-top: 1px; }
+.notif-time { font-size: 9px; color: #444; margin-left: auto; }
 
-  .cafe-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 13px;
-    font-weight: 400;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 10px;
-  }
+/* FEATURES */
+.feat-top { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.feat-bot { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.feat-card {
+  background: var(--surface2); border: .5px solid var(--border);
+  border-radius: 12px; padding: 26px; position: relative; overflow: hidden;
+  transition: border-color .2s;
+}
+.feat-card:hover { border-color: var(--border-mid); }
+.feat-blob {
+  position: absolute; right: -18px; top: -18px;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--accent-light); pointer-events: none;
+}
+.feat-card h3 { margin-bottom: 8px; }
+.feat-card p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.feat-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--accent-light); display: flex; align-items: center;
+  justify-content: center; margin-bottom: 18px; flex-shrink: 0;
+}
+.feat-icon i { font-size: 22px; color: var(--accent); }
+.feat-card-sm .feat-icon { width: 38px; height: 38px; border-radius: 8px; margin-bottom: 14px; }
+.feat-card-sm .feat-icon i { font-size: 18px; }
+.feat-card-lg { padding: 30px; }
 
-  h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--espresso);
-    line-height: 1.15;
-    margin-bottom: 14px;
-  }
+/* HOW IT WORKS */
+.how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+.step { display: flex; gap: 18px; padding-bottom: 32px; }
+.step:last-child { padding-bottom: 0; }
+.step-spine { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; z-index: 1;
+}
+.step-line { width: 1px; flex: 1; background: var(--border-mid); margin-top: 8px; }
+.step-body { padding-top: 5px; }
+.step-body h3 { font-size: 15px; margin-bottom: 7px; }
+.step-body p { font-size: 13px; color: var(--muted); line-height: 1.65; margin-bottom: 12px; }
+.url-pill {
+  display: inline-block; background: var(--surface2);
+  border: 1px solid var(--border-mid); padding: 7px 14px;
+  font-size: 11px; color: var(--muted); border-radius: 4px;
+}
+.url-pill span { color: var(--accent); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; font-size: 12px; border: 1px solid var(--border-mid);
+  color: var(--muted); background: var(--surface); border-radius: 4px;
+}
+.chip-fill { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  .subtitle {
-    font-size: 15px;
-    color: #7a5c45;
-    line-height: 1.6;
-    margin-bottom: 36px;
-    max-width: 280px;
-  }
+.how-right { padding-top: 4px; }
+.right-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted2); margin-bottom: 10px; }
+.cafe-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border: .5px solid var(--border); background: var(--surface);
+  border-radius: 8px; margin-bottom: 8px; transition: border-color .2s;
+}
+.cafe-row:hover { border-color: var(--border-mid); }
+.cafe-swatch { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.cafe-name { font-size: 13px; font-weight: 500; }
+.cafe-slug { font-size: 11px; color: var(--muted2); margin-top: 1px; }
+.cafe-badge {
+  margin-left: auto; font-size: 10px; padding: 3px 9px;
+  background: var(--accent-light); color: var(--accent-dark);
+  border-radius: 20px; letter-spacing: .5px;
+}
 
-  .btn-spin {
-    background: var(--espresso);
-    color: var(--cream);
-    border: none;
-    border-radius: 100px;
-    padding: 16px 40px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    letter-spacing: 0.02em;
-    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-    box-shadow: 0 4px 20px rgba(45,18,6,0.25);
-    position: relative;
-    overflow: hidden;
-  }
-  .btn-spin::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
-  }
-  .btn-spin:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(45,18,6,0.35); background: #3d1a08; }
-  .btn-spin:active { transform: translateY(0); }
-  .btn-spin:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+/* staff preview */
+.staff-preview { margin-top: 24px; background: var(--surface); border: .5px solid var(--border); border-radius: 10px; overflow: hidden; }
+.staff-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 10px; color: var(--muted2); letter-spacing: 1.5px; text-transform: uppercase; }
+.staff-body { padding: 16px; }
+.staff-name { font-size: 16px; font-weight: 500; margin-bottom: 2px; }
+.staff-id { font-size: 11px; color: var(--muted2); margin-bottom: 14px; }
+.staff-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; margin-bottom: 10px; }
+.staff-count { font-size: 22px; font-weight: 700; text-align: center; }
+.staff-count-lbl { font-size: 9px; color: var(--muted); text-align: center; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; margin-bottom: 14px; }
+.staff-btn { background: var(--accent); padding: 11px; text-align: center; font-size: 12px; font-weight: 500; color: #fff; letter-spacing: 1px; text-transform: uppercase; border-radius: 6px; cursor: pointer; }
 
-  .odds-note {
-    margin-top: 20px;
-    font-size: 12px;
-    color: #b8956a;
-    letter-spacing: 0.04em;
-  }
+/* CTA */
+#cta { padding: 80px 0; }
+.cta-inner {
+  background: var(--surface); border: .5px solid var(--border-mid);
+  border-radius: 14px; padding: 52px;
+  display: flex; gap: 40px; align-items: center; justify-content: space-between;
+  position: relative; overflow: hidden;
+}
+.cta-blob { display: none; }
+.cta-eyebrow { font-size: 10px; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+.cta-inner h2 { margin-bottom: 10px; }
+.cta-inner p { font-size: 14px; color: var(--muted); max-width: 380px; }
+.cta-right { flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.cta-note { font-size: 11px; color: var(--muted2); }
 
-  /* ── SPINNING STATE ── */
-  @keyframes cupSpin {
-    0% { transform: rotate(0deg) scale(1); }
-    40% { transform: rotate(15deg) scale(1.05); }
-    60% { transform: rotate(-10deg) scale(1.05); }
-    80% { transform: rotate(5deg) scale(1); }
-    100% { transform: rotate(0deg) scale(1); }
-  }
-  .spinning .cup-svg { animation: cupSpin 0.5s ease-in-out infinite; }
+footer {
+  border-top: 1px solid var(--border); padding: 28px 0;
+  background: var(--surface);
+}
+.footer-inner { max-width: 1060px; margin: 0 auto; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; }
+.footer-logo { font-size: 14px; font-weight: 700; }
+.footer-copy { font-size: 11px; color: var(--muted2); }
 
-  @keyframes shimmer {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  .spin-text {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--espresso);
-    background: linear-gradient(90deg, var(--espresso) 0%, var(--gold) 50%, var(--espresso) 100%);
-    background-size: 200%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: shimmer 1.2s linear infinite;
-    margin-top: 24px;
-  }
-
-  /* ── WIN STATE ── */
-  @keyframes popIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    70% { transform: scale(1.08); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes confettiFall {
-    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
-  }
-
-  .win-icon {
-    font-size: 72px;
-    line-height: 1;
-    margin-bottom: 20px;
-    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-
-  .win-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 36px;
-    font-weight: 900;
-    color: var(--espresso);
-    margin-bottom: 8px;
-    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
-  }
-
-  .win-sub {
-    font-size: 16px;
-    color: #7a5c45;
-    line-height: 1.6;
-    margin-bottom: 32px;
-    max-width: 280px;
-    animation: popIn 0.5s ease 0.2s both;
-  }
-
-  .confetti-container {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 100px;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  .confetti-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    animation: confettiFall 1.2s ease-in forwards;
-  }
-
-  .btn-wallet {
-    background: linear-gradient(135deg, var(--gold), var(--gold-light));
-    color: var(--espresso);
-    border: none;
-    border-radius: 100px;
-    padding: 18px 44px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    letter-spacing: 0.01em;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 6px 24px rgba(200,146,42,0.4);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: popIn 0.5s ease 0.3s both;
-  }
-  .btn-wallet:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(200,146,42,0.5); }
-  .btn-wallet:active { transform: translateY(0); }
-  .btn-wallet:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-  .wallet-icon {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-  }
-
-  .btn-status {
-    margin-top: 14px;
-    font-size: 13px;
-    color: #7a5c45;
-    min-height: 18px;
-    animation: popIn 0.3s ease 0.4s both;
-  }
-
-  /* ── LOSS STATE ── */
-  .loss-icon {
-    font-size: 64px;
-    line-height: 1;
-    margin-bottom: 20px;
-    animation: popIn 0.4s ease both;
-  }
-  .loss-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 30px;
-    font-weight: 900;
-    color: var(--espresso);
-    margin-bottom: 10px;
-  }
-  .loss-sub {
-    font-size: 15px;
-    color: #7a5c45;
-    line-height: 1.65;
-    margin-bottom: 32px;
-    max-width: 270px;
-  }
-  .btn-again {
-    background: transparent;
-    color: var(--espresso);
-    border: 2px solid var(--espresso);
-    border-radius: 100px;
-    padding: 14px 36px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, transform 0.15s;
-  }
-  .btn-again:hover { background: var(--espresso); color: var(--cream); transform: translateY(-1px); }
-
-  /* ── SUCCESS STATE ── */
-  .success-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-  .success-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-weight: 900;
-    color: var(--espresso);
-    margin-bottom: 10px;
-  }
-  .success-sub {
-    font-size: 15px;
-    color: #7a5c45;
-    line-height: 1.65;
-    max-width: 280px;
-  }
-
-  /* ── ERROR STATE ── */
-  .error-box {
-    background: #fff3f0;
-    border: 1px solid #f5c6bb;
-    border-radius: 12px;
-    padding: 20px 24px;
-    font-size: 14px;
-    color: #8b3a2a;
-    line-height: 1.6;
-    margin-bottom: 24px;
-    text-align: left;
-    width: 100%;
-  }
-  .error-box strong { display: block; margin-bottom: 6px; }
-
-  /* ── API CONFIG BANNER ── */
-  .config-banner {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    background: #c8922a;
-    color: #1a0a00;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    text-align: center;
-    padding: 10px 16px;
-    font-weight: 500;
-    z-index: 100;
-    display: none;
-  }
-  .config-banner.visible { display: block; }
-  .config-banner a { color: #1a0a00; font-weight: 700; }
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .phone { display: none; }
+  .how-grid { grid-template-columns: 1fr; }
+  .how-right { display: none; }
+  .feat-top { grid-template-columns: 1fr; }
+  .feat-bot { grid-template-columns: 1fr 1fr; }
+  .cta-inner { flex-direction: column; padding: 32px; }
+  .container, .nav-inner, .footer-inner { padding: 0 20px; }
+  section { padding: 56px 0; }
+  .nav-links { display: none; }
+}
 </style>
 </head>
 <body>
 
-<div class="ring ring-1"></div>
-<div class="ring ring-2"></div>
-<div class="ring ring-3"></div>
-
-<!-- Config warning for dev -->
-<div class="config-banner" id="configBanner">
-  ⚙️ Add your API key and cafe name at the top of this file to go live.
-  <a href="https://walletwallet.alen.ro" target="_blank">Get API key →</a>
-</div>
-
-<div class="card" id="card">
-
-  <!-- IDLE -->
-  <div class="state" id="stateIdle">
-    <div class="cup-wrap">
-      <svg class="cup-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- steam -->
-        <g class="steam-1">
-          <path d="M44 28 Q40 22 44 16 Q48 10 44 4" stroke="#c8922a" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        </g>
-        <g class="steam-2">
-          <path d="M60 24 Q56 18 60 12 Q64 6 60 0" stroke="#c8922a" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        </g>
-        <g class="steam-3">
-          <path d="M76 28 Q72 22 76 16 Q80 10 76 4" stroke="#c8922a" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        </g>
-        <!-- cup body -->
-        <path d="M22 42 L32 98 Q32 102 36 102 L84 102 Q88 102 88 98 L98 42 Z" fill="#2d1206" stroke="#c8922a" stroke-width="1.5"/>
-        <!-- coffee surface -->
-        <ellipse cx="60" cy="42" rx="38" ry="8" fill="#5a2d0c" stroke="#c8922a" stroke-width="1.5"/>
-        <!-- crema swirl -->
-        <path d="M44 42 Q52 38 60 42 Q68 46 76 42" stroke="#c8922a88" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        <!-- cup sleeve -->
-        <path d="M28 64 L33 96 Q33 100 37 100 L83 100 Q87 100 87 96 L92 64 Z" fill="#1a0a00" opacity="0.4"/>
-        <!-- handle -->
-        <path d="M88 58 Q108 58 108 72 Q108 86 88 86" stroke="#2d1206" stroke-width="6" stroke-linecap="round" fill="none"/>
-        <path d="M88 58 Q104 58 104 72 Q104 86 88 86" stroke="#c8922a" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <!-- star on cup -->
-        <text x="60" y="78" text-anchor="middle" font-size="18" fill="#c8922a" opacity="0.7">✦</text>
-      </svg>
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">Lucky<span class="acc">Cup</span></div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="https://freecoffee-iota.vercel.app/setup.html">Setup</a>
     </div>
-    <p class="cafe-name">Your Cafe Name</p>
-    <h1>Lucky<br>Cup</h1>
-    <p class="subtitle">Every lucky cup gives you a 1 in 10 chance of winning your next coffee free.</p>
-    <button class="btn-spin" id="btnSpin" onclick="reveal()">Reveal my cup ✦</button>
-    <p class="odds-note">1 in 10 chance · Free coffee if you win</p>
+    <a href="https://freecoffee-iota.vercel.app/setup.html" class="btn-primary">Create cafe →</a>
   </div>
+</nav>
 
-  <!-- SPINNING -->
-  <div class="state hidden spinning" id="stateSpinning">
-    <div class="cup-wrap">
-      <svg class="cup-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22 42 L32 98 Q32 102 36 102 L84 102 Q88 102 88 98 L98 42 Z" fill="#2d1206" stroke="#c8922a" stroke-width="1.5"/>
-        <ellipse cx="60" cy="42" rx="38" ry="8" fill="#5a2d0c" stroke="#c8922a" stroke-width="1.5"/>
-        <path d="M44 42 Q52 38 60 42 Q68 46 76 42" stroke="#c8922a88" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        <path d="M88 58 Q104 58 104 72 Q104 86 88 86" stroke="#c8922a" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <text x="60" y="78" text-anchor="middle" font-size="22" fill="#c8922a">?</text>
-      </svg>
+<!-- HERO -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="tag">☕ Digital loyalty cards</div>
+        <h1>Stamp cards<br>customers<br><em>actually keep.</em></h1>
+        <p class="hero-sub">No apps. No paper. Loyalty cards that live in Apple Wallet — branded for your cafe, updated live the moment you stamp.</p>
+        <div class="hero-btns">
+          <a href="https://freecoffee-iota.vercel.app/setup.html" class="btn-primary" style="font-size:13px;padding:13px 26px">Create your cafe →</a>
+          <a href="#how" class="btn-outline" style="font-size:13px;padding:13px 26px">See how it works</a>
+        </div>
+        <div class="trust-row">
+          <div class="trust-item"><div class="trust-check">✓</div>Free setup</div>
+          <div class="trust-item"><div class="trust-check">✓</div>No app to download</div>
+          <div class="trust-item"><div class="trust-check">✓</div>Works on any iPhone</div>
+        </div>
+      </div>
+
+      <!-- phone -->
+      <div>
+        <div class="phone">
+          <div class="phone-pill"></div>
+          <div class="pass">
+            <div class="pass-header">
+              <div>
+                <div class="pass-cafe-lbl">Lucky Cafe</div>
+                <div class="pass-title">Loyalty Card</div>
+              </div>
+              <div class="pass-icon">☕</div>
+            </div>
+            <div class="pass-strip">
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#c94f2b"/><text x="15" y="20" text-anchor="middle" font-size="13">☕</text></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="none" stroke="#c94f2b" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="none" stroke="#c94f2b" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+              <svg width="100%" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="none" stroke="#c94f2b" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+            </div>
+            <div class="pass-footer">
+              <div><div class="pass-fld-lbl">Member</div><div class="pass-fld-val">Sarah M.</div></div>
+              <div style="text-align:right"><div class="pass-fld-lbl">Stamps</div><div class="pass-fld-val hi">7 of 10</div></div>
+            </div>
+          </div>
+          <div class="notif">
+            <div class="notif-icon">☕</div>
+            <div>
+              <div class="notif-t">Stamp added</div>
+              <div class="notif-s">7 of 10 at Lucky Cafe</div>
+            </div>
+            <div class="notif-time">now</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <p class="spin-text">Brewing your luck…</p>
   </div>
+</section>
 
-  <!-- WIN -->
-  <div class="state hidden" id="stateWin">
-    <div class="confetti-container" id="confettiContainer"></div>
-    <div class="win-icon">☕</div>
-    <h2 class="win-title">You won!</h2>
-    <p class="win-sub">Your next coffee is on us. Save your free coffee pass to Apple Wallet and show it next time you visit.</p>
-    <button class="btn-wallet" id="btnWallet" onclick="generatePass()">
-      <svg class="wallet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="5" width="20" height="14" rx="3"/>
-        <path d="M16 12a2 2 0 0 0 0 4h4v-4h-4z"/>
-      </svg>
-      Save to Apple Wallet
-    </button>
-    <p class="btn-status" id="btnStatus"></p>
-  </div>
-
-  <!-- LOSS -->
-  <div class="state hidden" id="stateLoss">
-    <div class="loss-icon">🫘</div>
-    <h2 class="loss-title">Not this time…</h2>
-    <p class="loss-sub">No luck today, but every cup is a new chance. Come back tomorrow and try again — your next coffee could be free!</p>
-    <button class="btn-again" onclick="reset()">Try another cup</button>
-  </div>
-
-  <!-- SUCCESS (pass saved) -->
-  <div class="state hidden" id="stateSuccess">
-    <div class="success-icon">🎉</div>
-    <h2 class="success-title">Pass saved!</h2>
-    <p class="success-sub">Your free coffee pass is in Apple Wallet. Just open Wallet or double-tap the side button when you're back in store.</p>
-  </div>
-
-  <!-- ERROR -->
-  <div class="state hidden" id="stateError">
-    <div class="loss-icon">⚠️</div>
-    <h2 class="loss-title">Something went wrong</h2>
-    <div class="error-box" id="errorBox">
-      <strong>Could not generate pass</strong>
-      Check your API key is set correctly in the HTML file.
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div style="margin-bottom:44px">
+      <div class="tag">✨ Features</div>
+      <h2>Everything your cafe needs</h2>
+      <p style="font-size:14px;color:var(--muted);margin-top:12px;max-width:440px">Built for real cafes. No technical knowledge required. Set up in under two minutes.</p>
     </div>
-    <button class="btn-again" onclick="reset()">Try again</button>
+
+    <div class="feat-top">
+      <div class="feat-card feat-card-lg">
+        <div class="feat-blob"></div>
+        <div class="feat-icon"><i class="ti ti-bell-ringing" aria-hidden="true"></i></div>
+        <h3>Live push notifications</h3>
+        <p style="margin-top:8px;font-size:14px">Every stamp sends a banner to the customer's lock screen — no action needed from staff or customer. They know the moment it happens.</p>
+      </div>
+      <div class="feat-card feat-card-lg">
+        <div class="feat-blob"></div>
+        <div class="feat-icon"><i class="ti ti-palette" aria-hidden="true"></i></div>
+        <h3>Fully branded per cafe</h3>
+        <p style="margin-top:8px;font-size:14px">Upload your logo, pick your accent colour, choose your stamp icon. The card your customers carry looks like it was made just for you.</p>
+      </div>
+    </div>
+
+    <div class="feat-bot">
+      <div class="feat-card feat-card-sm">
+        <div class="feat-icon"><i class="ti ti-device-mobile" aria-hidden="true"></i></div>
+        <h3>Lives in Apple Wallet</h3>
+        <p>Always in their pocket. No app, no login, no friction.</p>
+      </div>
+      <div class="feat-card feat-card-sm">
+        <div class="feat-icon"><i class="ti ti-qrcode" aria-hidden="true"></i></div>
+        <h3>Print-ready QR poster</h3>
+        <p>Download a branded QR code for your counter. Customers scan to sign up.</p>
+      </div>
+      <div class="feat-card feat-card-sm">
+        <div class="feat-icon"><i class="ti ti-building-store" aria-hidden="true"></i></div>
+        <h3>Multi-cafe ready</h3>
+        <p>Run any number of locations. Each gets its own card and PIN.</p>
+      </div>
+    </div>
   </div>
+</section>
 
-</div>
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="container">
+    <div style="margin-bottom:44px">
+      <div class="tag">🗂️ How it works</div>
+      <h2>Three steps to launch</h2>
+    </div>
 
-<script>
-  // ── CONFIGURATION ──────────────────────────────────────────────
-  const CAFE_NAME   = "Your Cafe Name";
-  const API_KEY     = "ww_live_891098a7b7ab704f915b501a7b886005";
-  // ──────────────────────────────────────────────────────────────
+    <div class="how-grid">
+      <div>
+        <div class="step">
+          <div class="step-spine"><div class="step-num">1</div><div class="step-line"></div></div>
+          <div class="step-body">
+            <h3>Set up your cafe</h3>
+            <p>Name, logo, accent colour, staff PIN. Done in two minutes at <span class="acc">/setup</span>. You get a signup link and staff terminal link immediately.</p>
+            <div class="url-pill">freecoffee.app/setup</div>
+          </div>
+        </div>
 
-  const WIN_CHANCE = 0.1; // 1 in 10
+        <div class="step">
+          <div class="step-spine"><div class="step-num">2</div><div class="step-line"></div></div>
+          <div class="step-body">
+            <h3>Share your signup link</h3>
+            <p>Print the QR code for your counter, or share the link on Instagram. Customers tap once to get their branded card in Apple Wallet.</p>
+            <div class="url-pill">freecoffee.app/signup?cafe=<span>lucky-cafe</span></div>
+          </div>
+        </div>
 
-  const $ = id => document.getElementById(id);
+        <div class="step">
+          <div class="step-spine"><div class="step-num">3</div></div>
+          <div class="step-body">
+            <h3>Stamp and redeem</h3>
+            <p>Staff open the terminal on any phone. Scan the customer's Wallet QR, enter the PIN, tap stamp. The card updates live and a notification fires.</p>
+            <div class="chips">
+              <div class="chip">📷 Scan QR</div>
+              <div class="chip">🔒 Enter PIN</div>
+              <div class="chip chip-fill">✓ Stamp added</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  // Show config banner if key not set
-  if (API_KEY.includes("REPLACE")) {
-    $("configBanner").classList.add("visible");
-  }
+      <div class="how-right">
+        <div class="right-label">Your cafes</div>
+        <div class="cafe-row">
+          <div class="cafe-swatch" style="background:#faeee9">☕</div>
+          <div><div class="cafe-name">Lucky Cafe</div><div class="cafe-slug">lucky-cafe · 34 members</div></div>
+          <div class="cafe-badge">live</div>
+        </div>
+        <div class="cafe-row">
+          <div class="cafe-swatch" style="background:#e6f1fb">🫖</div>
+          <div><div class="cafe-name">Paikai Coffee</div><div class="cafe-slug">paikai · 12 members</div></div>
+          <div class="cafe-badge">live</div>
+        </div>
+        <div class="cafe-row">
+          <div class="cafe-swatch" style="background:#eaf3de">🌿</div>
+          <div><div class="cafe-name">Columbus</div><div class="cafe-slug">columbus · 8 members</div></div>
+          <div class="cafe-badge">live</div>
+        </div>
 
-  function show(id) {
-    ["stateIdle","stateSpinning","stateWin","stateLoss","stateSuccess","stateError"]
-      .forEach(s => $(s).classList.toggle("hidden", s !== id));
-  }
+        <div class="staff-preview" style="margin-top:24px">
+          <div class="staff-header">Lucky Cafe — Staff terminal</div>
+          <div class="staff-body">
+            <div class="staff-name">Sarah M.</div>
+            <div class="staff-id">CUST-A4BF2E</div>
+            <div class="staff-grid">
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="#c94f2b"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="none" stroke="#c94f2b" stroke-width="1.5"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="none" stroke="#c94f2b" stroke-width="1.5"/></svg>
+              <svg viewBox="0 0 20 20" width="100%"><circle cx="10" cy="10" r="8" fill="none" stroke="#c94f2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="staff-count">7</div>
+            <div class="staff-count-lbl">of 10 stamps</div>
+            <div class="staff-btn">Add Stamp ☕</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-  function reset() {
-    $("btnStatus").textContent = "";
-    $("btnWallet").disabled = false;
-    show("stateIdle");
-  }
+<!-- CTA -->
+<section id="cta">
+  <div class="container">
+    <div class="cta-inner">
+      <div class="cta-blob"></div>
+      <div>
+        <div class="cta-eyebrow">Ready to start?</div>
+        <h2>Set up your first cafe</h2>
+        <p style="margin-top:10px;font-size:14px;color:var(--muted)">Free forever. Your customers keep their cards. No subscription, no contracts.</p>
+      </div>
+      <div class="cta-right">
+        <a href="https://freecoffee-iota.vercel.app/setup.html" class="btn-primary" style="font-size:14px;padding:15px 32px">Create your cafe →</a>
+        <div class="cta-note">Takes about 2 minutes</div>
+      </div>
+    </div>
+  </div>
+</section>
 
-  function spawnConfetti() {
-    const container = $("confettiContainer");
-    container.innerHTML = "";
-    const colors = ["#c8922a","#e8b84b","#2d1206","#f5ede0","#7a5c45"];
-    for (let i = 0; i < 22; i++) {
-      const dot = document.createElement("div");
-      dot.className = "confetti-dot";
-      dot.style.cssText = `
-        left: ${Math.random() * 100}%;
-        top: ${-10 - Math.random() * 20}px;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        width: ${6 + Math.random() * 6}px;
-        height: ${6 + Math.random() * 6}px;
-        border-radius: ${Math.random() > 0.5 ? "50%" : "2px"};
-        animation-delay: ${Math.random() * 0.6}s;
-        animation-duration: ${0.9 + Math.random() * 0.6}s;
-      `;
-      container.appendChild(dot);
-    }
-  }
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Lucky<span class="acc">Cup</span></div>
+    <div class="footer-copy">Digital loyalty cards for independent cafes</div>
+  </div>
+</footer>
 
-  function reveal() {
-    $("btnSpin").disabled = true;
-    show("stateSpinning");
-
-    // Dramatic pause then reveal
-    setTimeout(() => {
-      const won = Math.random() < WIN_CHANCE;
-      if (won) {
-        show("stateWin");
-        spawnConfetti();
-      } else {
-        show("stateLoss");
-      }
-    }, 1800);
-  }
-
-  async function generatePass() {
-    const btn = $("btnWallet");
-    const status = $("btnStatus");
-
-    btn.disabled = true;
-    status.textContent = "Generating your pass…";
-
-    if (API_KEY.includes("REPLACE")) {
-      $("errorBox").innerHTML = `
-        <strong>API key not set</strong>
-        Open the HTML file and replace <code>ww_live_REPLACE_WITH_YOUR_KEY</code>
-        with your real key from <a href="https://walletwallet.alen.ro" target="_blank">walletwallet.alen.ro</a>.
-      `;
-      show("stateError");
-      return;
-    }
-
-    try {
-      const response = await fetch("https://api.walletwallet.dev/api/pkpass", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          barcodeValue: `FREE-COFFEE-${Date.now()}`,
-          barcodeFormat: "QR",
-          logoText: CAFE_NAME,
-          organizationName: CAFE_NAME,
-          description: "Free coffee pass",
-          primaryFields: [
-            { label: "REWARD", value: "Free Coffee" }
-          ],
-          secondaryFields: [
-            { label: "VALID FOR", value: "1 Visit" },
-            { label: "ANY SIZE", value: "Any Drink" }
-          ],
-          backFields: [
-            { label: "How to redeem", value: "Show this pass at the counter. One use only. Cannot be combined with other offers." },
-            { label: "Issued by", value: CAFE_NAME }
-          ],
-          colorPreset: "dark",
-          expirationDays: 90,
-          sharingProhibited: true
-        })
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-        throw new Error(err.error || `HTTP ${response.status}`);
-      }
-
-      // Trigger download / iOS install
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "free-coffee.pkpass";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      // On iOS, tapping the .pkpass link opens Wallet directly
-      setTimeout(() => show("stateSuccess"), 800);
-
-    } catch (err) {
-      $("errorBox").innerHTML = `<strong>Pass generation failed</strong>${err.message}`;
-      show("stateError");
-    }
-  }
-</script>
 </body>
 </html>
