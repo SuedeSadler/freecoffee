@@ -406,7 +406,7 @@ export default async function handler(req, res) {
 
     // Upload via Supabase JS client
     const { error: storageErr } = await supa.storage
-      .from('cafe-logos')
+      .from('cafe-logo')
       .upload(filename, imgBuf, { contentType: mime, upsert: true });
 
     if (storageErr) {
@@ -415,7 +415,7 @@ export default async function handler(req, res) {
       return err(res, `Storage upload failed: ${storageErr.message}`, 500);
     }
 
-    const logoUrl = `${SUPABASE_URL}/storage/v1/object/public/cafe-logos/${filename}`;
+    const logoUrl = `${SUPABASE_URL}/storage/v1/object/public/cafe-logo/${filename}`;
 
     // Use raw REST PATCH so we can see exactly what Supabase returns
     const patchRes = await fetch(
