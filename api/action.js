@@ -190,52 +190,75 @@ function makeLogoPng() {
 }
 
 // WalletWallet
-async function wwFetch(path, body) {
-  const res = await fetch(`https://api.walletwallet.io${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': WALLETWALLET_KEY },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  try { return JSON.parse(text); } catch { return { raw: text, status: res.status }; }
-}
+const WW_BASE = 'https://api.walletwallet.dev';
+const WW_AUTH = () => ({ 'Authorization': `Bearer ${WALLETWALLET_KEY}`, 'Content-Type': 'application/json' });
 
-async function buildPass({ serial, custId, name, stamps, accent, cafeName, slug, version }) {
+function passPayload({ custId, name, stamps, accent, cafeName, slug, version }) {
   const full = stamps >= STAMPS_NEEDED;
-  const stripB64 = makeStripPng(stamps, accent, version).toString('base64');
-  const logoB64  = makeLogoPng().toString('base64');
-  const qrUrl    = `${SITE_URL}/staff.html?cafe=${slug}&id=${custId}`;
-
-  return wwFetch('/v1/passes/create', {
-    serialNumber: serial,
-    passType: 'generic',
-    teamId: 'auto',
-    backgroundColor: 'rgb(26,26,26)',
-    labelColor: 'rgb(180,180,180)',
-    foregroundColor: 'rgb(255,255,255)',
+  const stripPng = makeStripPng(stamps, accent, version);
+  const stripDataUri = `data:image/png;base64,${stripPng.toString('base64')}`;
+  const qrUrl = `${SITE_URL}/staff.html?cafe=${slug}&id=${custId}`;
+  return {
+    barcodeValue: qrUrl,
+    barcodeFormat: 'QR',
     logoText: cafeName,
     organizationName: cafeName,
     description: `${cafeName} Loyalty Card`,
-    stripBase64: stripB64,
-    logoBase64: logoB64,
-    barcodes: [{ message: qrUrl, format: 'PKBarcodeFormatQR', messageEncoding: 'iso-8859-1' }],
+    colorPro: '#1a1a1a',
+    stripURLPro: stripDataUri,
     primaryFields: full
-      ? [{ key: 'reward', label: '', value: 'REDEEM / 1 FREE COFFEE' }]
-      : [{ key: 'spacer', label: '', value: '' }],
+      ? [{ label: '', value: 'REDEEM / 1 FREE COFFEE' }]
+      : [{ label: '', value: '' }],
     secondaryFields: [
-      { key: 'member', label: 'MEMBER', value: name },
-      { key: 'stamps', label: 'STAMPS', value: `${stamps} of ${STAMPS_NEEDED}` },
+      { label: 'MEMBER', value: name },
+      { label: 'STAMPS', value: `${stamps} of ${STAMPS_NEEDED}` },
     ],
     backFields: [
-      { key: 'cafe',   label: 'CAFE',    value: cafeName },
-      { key: 'ts',     label: 'UPDATED', value: new Date().toISOString() },
-      { key: 'anchor', label: '',         value: `v${version}-${Date.now()}` },
+      { label: 'CAFE',    value: cafeName },
+      { label: 'UPDATED', value: new Date().toISOString() },
+      { label: '',        value: `v${version}-${Date.now()}` },
     ],
-    webServiceURL: `${SITE_URL}/api/action`,
-    authenticationToken: serial,
-  });
+  };
 }
 
+// Create a new pass -- returns { shareUrl, serialNumber }
+async function wwCreatePass(payload) {
+  const res = await fetch(`${WW_BASE}/api/passes`, {
+    method: 'POST',
+    headers: WW_AUTH(),
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`WalletWallet ${res.status}: ${text}`);
+  try { return JSON.parse(text); }
+  catch { throw new Error(`WalletWallet bad JSON: ${text}`); }
+}
+
+// Update an existing pass -- PUT /api/passes/<serial>
+async function wwUpdatePass(serial, payload) {
+  const res = await fetch(`${WW_BASE}/api/passes/${serial}`, {
+    method: 'PUT',
+    headers: WW_AUTH(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`WalletWallet update ${res.status}: ${text}`);
+  }
+}
+
+// Unified: pass serial=null to create, serial=string to update
+async function buildPass({ serial, custId, name, stamps, accent, cafeName, slug, version }) {
+  const payload = passPayload({ custId, name, stamps, accent, cafeName, slug, version });
+  if (!serial) {
+    const data = await wwCreatePass(payload);
+    // data = { serialNumber, shareUrl, applePass, googleSaveUrl }
+    return { passUrl: data.shareUrl, serialNumber: data.serialNumber };
+  } else {
+    await wwUpdatePass(serial, payload);
+    return { passUrl: null, serialNumber: serial };
+  }
+}
 // Response helpers
 function ok(res, data, status = 200) { res.status(status).json({ ok: true, ...data }); }
 function err(res, msg, status = 400) { res.status(status).json({ ok: false, error: msg }); }
@@ -313,17 +336,21 @@ export default async function handler(req, res) {
     }
 
     const custId = randomId();
-    const serial = randomUUID();
-    const passResult = await buildPass({
-      serial, custId, name, stamps: 0,
-      accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version: 1,
-    });
+    let passResult;
+    try {
+      passResult = await buildPass({
+        serial: null, custId, name, stamps: 0,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version: 1,
+      });
+    } catch (e) {
+      return err(res, `Pass creation failed: ${e.message}`, 500);
+    }
 
-    const passUrl = passResult.passUrl || passResult.downloadUrl;
-    if (!passUrl) return err(res, `Pass creation failed: ${JSON.stringify(passResult)}`, 500);
+    const { passUrl, serialNumber } = passResult;
+    if (!passUrl) return err(res, 'Pass created but no share URL returned', 500);
 
     const { error: insertErr } = await supa.from('customers').insert({
-      customer_id: custId, serial, name,
+      customer_id: custId, serial: serialNumber, name,
       email: email || null, stamps: 0, cafe_id: cafe.cafe_id,
     });
     if (insertErr) return err(res, insertErr.message, 500);
@@ -363,10 +390,14 @@ export default async function handler(req, res) {
     const newStamps = cust.stamps + 1;
     const version = (cust.version || 1) + 1;
 
-    await buildPass({
-      serial: cust.serial, custId, name: cust.name, stamps: newStamps,
-      accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
-    });
+    try {
+      await buildPass({
+        serial: cust.serial, custId, name: cust.name, stamps: newStamps,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
+      });
+    } catch (e) {
+      return err(res, `Pass update failed: ${e.message}`, 500);
+    }
     await supa.from('customers')
       .update({ stamps: newStamps, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
@@ -392,10 +423,14 @@ export default async function handler(req, res) {
     if (cust.stamps < STAMPS_NEEDED) return err(res, 'Not enough stamps to redeem', 400);
 
     const version = (cust.version || 1) + 1;
-    await buildPass({
-      serial: cust.serial, custId, name: cust.name, stamps: 0,
-      accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
-    });
+    try {
+      await buildPass({
+        serial: cust.serial, custId, name: cust.name, stamps: 0,
+        accent: cafe.accent, cafeName: cafe.cafe_name, slug: cafe.slug, version,
+      });
+    } catch (e) {
+      return err(res, `Pass update failed: ${e.message}`, 500);
+    }
     await supa.from('customers')
       .update({ stamps: 0, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
