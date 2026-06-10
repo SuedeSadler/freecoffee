@@ -603,5 +603,59 @@ export default async function handler(req, res) {
     return ok(res, { customer: cust });
   }
 
+  // ── demo-signup ───────────────────────────────────────────────────────────
+  // Signs up a customer for the hardcoded demo cafe. No PIN needed.
+  // Rate-limited by email dedup only — demo is public.
+  if (action === 'demo-signup') {
+    const { name, email } = body;
+    if (!name) return err(res, 'name required', 400);
+
+    const DEMO_SLUG = 'demo-cafe';
+
+    // Load demo cafe — must exist in cafe_settings
+    const { data: cafe, error: cafeErr } = await supa
+      .from('cafe_settings').select('*').eq('slug', DEMO_SLUG).single();
+    if (cafeErr || !cafe) return err(res,
+      'Demo cafe not set up yet — run the seed SQL in schema.sql', 404);
+
+    // Dedup by email if provided
+    if (email) {
+      const { data: existing } = await supa.from('customers').select('customer_id')
+        .eq('cafe_id', cafe.cafe_id).eq('email', email).maybeSingle();
+      if (existing) return err(res, 'Already signed up with this email', 409);
+    }
+
+    const custId = randomId();
+    let passResult;
+    try {
+      passResult = await buildPass({
+        serial: null, custId, name, stamps: 0,
+        accent: cafe.accent, cafeName: cafe.cafe_name,
+        slug: cafe.slug, version: 1, logoUrl: cafe.logo_url,
+      });
+    } catch (e) {
+      return err(res, `Pass creation failed: ${e.message}`, 500);
+    }
+
+    const { passUrl, serialNumber } = passResult;
+    if (!passUrl) return err(res, 'Pass created but no share URL returned', 500);
+
+    const { error: insertErr } = await supa.from('customers').insert({
+      customer_id:   custId,
+      serial:        serialNumber,
+      serial_number: serialNumber,
+      name,
+      email:         email || null,
+      stamps:        0,
+      cafe_id:       cafe.cafe_id,
+      cafe_name:     cafe.cafe_name,
+      accent:        cafe.accent,
+      mode:          cafe.mode,
+    });
+    if (insertErr) return err(res, insertErr.message, 500);
+
+    return ok(res, { passUrl, custId });
+  }
+
   return err(res, `Unknown action: ${action}`, 400);
 }

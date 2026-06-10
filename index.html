@@ -456,6 +456,90 @@ footer {
   </div>
 </section>
 
+<!-- DEMO -->
+<section id="demo">
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center">
+
+      <div>
+        <div class="tag">📲 Try it now</div>
+        <h2 style="margin-bottom:14px">Get a real card<br>on your phone</h2>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:0">
+          Sign up as a demo customer and add a real loyalty card to your Apple Wallet right now. No app, no account — just enter your name and tap the link.
+        </p>
+      </div>
+
+      <!-- Demo form card -->
+      <div id="demoFormWrap">
+        <div style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:18px;border-bottom:.5px solid var(--border)">
+            <div style="width:36px;height:36px;background:var(--accent-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">☕</div>
+            <div>
+              <div style="font-size:13px;font-weight:500">Demo Cafe</div>
+              <div style="font-size:11px;color:var(--muted)">LuckyCup demo · 10 stamps</div>
+            </div>
+          </div>
+
+          <div id="demoErr" style="display:none;font-size:12px;padding:9px 13px;border-radius:6px;border:1px solid #f5c4b3;color:#993c1d;background:var(--accent-light);margin-bottom:14px"></div>
+
+          <label style="display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Your name</label>
+          <input id="demoName" type="text" placeholder="First name" autocomplete="given-name"
+            style="width:100%;background:var(--surface2);border:.5px solid var(--border-mid);border-radius:6px;color:var(--text);font-family:var(--font);font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;transition:border-color .2s"
+            onkeydown="if(event.key==='Enter')demoSignup()"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='rgba(0,0,0,0.13)'">
+
+          <label style="display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Email <span style="color:var(--muted2);letter-spacing:0;text-transform:none;font-size:11px">(optional)</span></label>
+          <input id="demoEmail" type="email" placeholder="your@email.com" autocomplete="email"
+            style="width:100%;background:var(--surface2);border:.5px solid var(--border-mid);border-radius:6px;color:var(--text);font-family:var(--font);font-size:14px;padding:11px 14px;outline:none;margin-bottom:16px;transition:border-color .2s"
+            onkeydown="if(event.key==='Enter')demoSignup()"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='rgba(0,0,0,0.13)'">
+
+          <button id="demoBtn" onclick="demoSignup()"
+            style="width:100%;padding:13px;background:var(--accent);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;transition:opacity .2s">
+            Get My Demo Card →
+          </button>
+
+          <div style="margin-top:16px;text-align:center;font-size:11px;color:var(--muted2)">
+            iPhone only · Adds to Apple Wallet
+          </div>
+        </div>
+      </div>
+
+      <!-- Success state (hidden until signup) -->
+      <div id="demoSuccessWrap" style="display:none">
+        <div style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
+          <div style="font-size:52px;margin-bottom:12px">☕</div>
+          <div style="font-size:17px;font-weight:700;margin-bottom:8px">You're in!</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:24px">
+            Tap the button to add your card to Apple Wallet. Then come back and try adding stamps via the staff terminal.
+          </div>
+
+          <!-- Wallet button -->
+          <a id="demoWalletLink" href="#"
+            style="display:block;background:var(--accent);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:6px;text-decoration:none;margin-bottom:12px;transition:opacity .2s">
+            Add to Apple Wallet
+          </a>
+
+          <!-- QR for scanning on desktop -->
+          <div id="demoQrWrap" style="margin-top:20px;padding-top:20px;border-top:.5px solid var(--border)">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;letter-spacing:.5px">Or scan with your iPhone camera</div>
+            <canvas id="demoQrCanvas" style="border-radius:8px;max-width:140px"></canvas>
+          </div>
+
+          <button onclick="document.getElementById('demoFormWrap').style.display='';document.getElementById('demoSuccessWrap').style.display='none'"
+            style="margin-top:16px;background:none;border:none;font-family:var(--font);font-size:11px;color:var(--muted2);cursor:pointer;text-decoration:underline">
+            Sign up another
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- CTA -->
 <section id="cta">
   <div class="container">
@@ -481,5 +565,70 @@ footer {
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/config.js"></script>
+<script>
+async function demoSignup() {
+  const name  = document.getElementById('demoName').value.trim();
+  const email = document.getElementById('demoEmail').value.trim();
+  const err   = document.getElementById('demoErr');
+  const btn   = document.getElementById('demoBtn');
+
+  err.style.display = 'none';
+  if (!name) { err.textContent = 'Please enter your name.'; err.style.display = ''; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating your card...';
+
+  try {
+    const res  = await fetch(CONFIG.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'demo-signup', name, email }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      err.textContent = data.error || 'Something went wrong — try again.';
+      err.style.display = '';
+      return;
+    }
+
+    // Show success
+    document.getElementById('demoFormWrap').style.display    = 'none';
+    document.getElementById('demoSuccessWrap').style.display = '';
+    document.getElementById('demoWalletLink').href = data.passUrl;
+
+    // Render QR code pointing to the pass URL
+    const canvas = document.getElementById('demoQrCanvas');
+    canvas.width  = 140;
+    canvas.height = 140;
+    const tmp = document.createElement('div');
+    document.body.appendChild(tmp);
+    new QRCode(tmp, {
+      text:         data.passUrl,
+      width:        140,
+      height:       140,
+      colorDark:    '#1a1a1a',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    setTimeout(() => {
+      const src = tmp.querySelector('canvas');
+      if (src) {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(src, 0, 0, 140, 140);
+      }
+      document.body.removeChild(tmp);
+    }, 100);
+
+  } catch (e) {
+    err.textContent = 'Network error — please try again.';
+    err.style.display = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get My Demo Card →';
+  }
+}
+</script>
 </body>
 </html>
