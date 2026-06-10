@@ -246,8 +246,28 @@
         <div class="stamp-label">of 10 stamps</div>
       </div>
       <button class="btn btn-green" id="stampBtn" onclick="doStamp()">Add Stamp ☕</button>
-      <button class="btn" id="redeemBtn" onclick="doRedeem()"
-              style="display:none;margin-top:8px;background:var(--green)">Redeem Free Coffee ✓</button>
+
+      <!-- Redeem: shows confirm prompt inline instead of browser confirm() -->
+      <div id="redeemBtn" style="display:none;margin-top:8px">
+        <div id="redeemConfirm" style="display:none;background:var(--green-light);border:1px solid #9FE1CB;border-radius:8px;padding:14px;margin-bottom:8px;text-align:center">
+          <div style="font-size:13px;font-weight:500;color:var(--green);margin-bottom:12px">Confirm free coffee redemption?</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="confirmRedeem()"
+              style="flex:1;padding:11px;background:var(--green);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer">
+              Yes, redeem ✓
+            </button>
+            <button onclick="cancelRedeem()"
+              style="flex:1;padding:11px;background:transparent;border:1px solid var(--border-mid);color:var(--muted);font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:6px;cursor:pointer">
+              Cancel
+            </button>
+          </div>
+        </div>
+        <button id="redeemTriggerBtn" onclick="triggerRedeem()"
+          style="width:100%;padding:14px;background:var(--green);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;transition:opacity .2s">
+          Redeem Free Coffee ✓
+        </button>
+      </div>
+
       <button class="btn btn-ghost" onclick="clearCustomer()">Scan different card</button>
     </div>
 
@@ -403,10 +423,12 @@ function renderCustomer(cust) {
   document.getElementById('custName').textContent = cust.name;
   document.getElementById('custId').textContent   = cust.customer_id;
   const full = cust.stamps >= CONFIG.stampsNeeded;
-  document.getElementById('stampCount').textContent = cust.stamps;
-  document.getElementById('fullBanner').style.display = full ? '' : 'none';
-  document.getElementById('stampBtn').style.display   = full ? 'none' : '';
-  document.getElementById('redeemBtn').style.display  = full ? '' : 'none';
+  document.getElementById('stampCount').textContent          = cust.stamps;
+  document.getElementById('fullBanner').style.display        = full ? '' : 'none';
+  document.getElementById('stampBtn').style.display          = full ? 'none' : '';
+  document.getElementById('redeemBtn').style.display         = full ? '' : 'none';
+  document.getElementById('redeemConfirm').style.display     = 'none';
+  document.getElementById('redeemTriggerBtn').style.display  = '';
   buildStampDots(cust.stamps, -1);
 }
 
@@ -441,9 +463,11 @@ async function doStamp() {
     document.getElementById('stampCount').textContent = currentStamps;
     buildStampDots(currentStamps, prev);
     if (data.full) {
-      document.getElementById('fullBanner').style.display = '';
-      document.getElementById('stampBtn').style.display   = 'none';
-      document.getElementById('redeemBtn').style.display  = '';
+      document.getElementById('fullBanner').style.display        = '';
+      document.getElementById('stampBtn').style.display          = 'none';
+      document.getElementById('redeemBtn').style.display         = '';
+      document.getElementById('redeemConfirm').style.display     = 'none';
+      document.getElementById('redeemTriggerBtn').style.display  = '';
       showSuccess('Card complete! Customer can now redeem a free coffee.');
     } else {
       showSuccess(`Stamp added — ${currentStamps} of ${CONFIG.stampsNeeded}`);
@@ -455,12 +479,24 @@ async function doStamp() {
   }
 }
 
-async function doRedeem() {
+function triggerRedeem() {
+  document.getElementById('redeemConfirm').style.display = '';
+  document.getElementById('redeemTriggerBtn').style.display = 'none';
+}
+
+function cancelRedeem() {
+  document.getElementById('redeemConfirm').style.display = 'none';
+  document.getElementById('redeemTriggerBtn').style.display = '';
+}
+
+async function confirmRedeem() {
   if (!currentCustId) return;
-  if (!confirm('Confirm: redeem free coffee and reset card?')) return;
   clearMsgs();
-  const btn = document.getElementById('redeemBtn');
-  btn.disabled = true; btn.textContent = 'Redeeming...';
+  const confirmDiv  = document.getElementById('redeemConfirm');
+  const triggerBtn  = document.getElementById('redeemTriggerBtn');
+  const yesBtn      = confirmDiv.querySelector('button');
+  yesBtn.disabled   = true;
+  yesBtn.textContent = 'Redeeming...';
   try {
     const res = await fetch(CONFIG.apiUrl, {
       method: 'POST',
@@ -468,18 +504,26 @@ async function doRedeem() {
       body: JSON.stringify({ action: 'redeem', slug: cafeSlug, custId: currentCustId, pin: sessionPin }),
     });
     const data = await res.json();
-    if (!data.ok) return showTermErr(data.error || 'Redemption failed.');
+    if (!data.ok) {
+      showTermErr(data.error || 'Redemption failed.');
+      cancelRedeem();
+      return;
+    }
     currentStamps = 0;
-    document.getElementById('stampCount').textContent  = 0;
-    document.getElementById('fullBanner').style.display = 'none';
-    document.getElementById('redeemBtn').style.display  = 'none';
-    document.getElementById('stampBtn').style.display   = '';
+    document.getElementById('stampCount').textContent    = 0;
+    document.getElementById('fullBanner').style.display  = 'none';
+    document.getElementById('redeemBtn').style.display   = 'none';
+    document.getElementById('stampBtn').style.display    = '';
+    confirmDiv.style.display  = 'none';
+    triggerBtn.style.display  = '';
     buildStampDots(0, -1);
-    showSuccess('Redeemed! Card reset — enjoy the coffee.');
+    showSuccess('Redeemed! Card reset — enjoy the coffee. ☕');
   } catch (e) {
     showTermErr('Network error — try again.');
+    cancelRedeem();
   } finally {
-    btn.disabled = false; btn.textContent = 'Redeem Free Coffee ✓';
+    yesBtn.disabled   = false;
+    yesBtn.textContent = 'Yes, redeem ✓';
   }
 }
 
