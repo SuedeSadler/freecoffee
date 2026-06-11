@@ -239,19 +239,21 @@ function makeLogoDataUri(accentHex) {
 }
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, attachments }) {
   if (!RESEND_KEY) {
     console.log('[email] RESEND_KEY not set — skipping email to', to);
     return { skipped: true };
   }
   try {
+    const payload = { from: EMAIL_FROM, to, subject, html };
+    if (attachments && attachments.length) payload.attachments = attachments;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html }),
+      body: JSON.stringify(payload),
     });
     const text = await res.text();
     if (!res.ok) {
@@ -265,7 +267,7 @@ async function sendEmail({ to, subject, html }) {
   }
 }
 
-function approvalEmailHtml({ cafeName, slug, signupUrl, staffUrl }) {
+function approvalEmailHtml({ cafeName, slug, signupUrl, staffUrl, hasQr }) {
   return `
   <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
     <div style="font-size:22px;font-weight:700;margin-bottom:4px">Lucky<span style="color:#c94f2b">Cup</span></div>
@@ -287,10 +289,14 @@ function approvalEmailHtml({ cafeName, slug, signupUrl, staffUrl }) {
       </div>
     </div>
 
-    <p style="font-size:12px;color:#999;line-height:1.6;margin-top:24px">
-      Tip: print a QR code of your signup link and put it on your counter so customers can join in one tap.
-    </p>
-    <p style="font-size:11px;color:#bbb;margin-top:20px">LuckyCup \u2014 digital loyalty cards for independent cafes</p>
+    ${hasQr ? `<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:20px;margin-top:16px;text-align:center">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">\ud83d\udcce Your QR code is attached</div>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin:0">
+        Print the attached QR code and put it on your counter. Customers scan it to get their loyalty card in one tap.
+      </p>
+    </div>` : ''}
+
+    <p style="font-size:11px;color:#bbb;margin-top:24px">LuckyCup \u2014 digital loyalty cards for independent cafes</p>
   </div>`;
 }
 
@@ -298,6 +304,20 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, m => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[m]);
+}
+
+// Fetch a QR code PNG for a URL, return base64 (for email attachment)
+async function fetchQrBase64(data, size = 600) {
+  try {
+    const api = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(data)}`;
+    const res = await fetch(api);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.toString('base64');
+  } catch (e) {
+    console.log('[qr] fetch failed:', e.message);
+    return null;
+  }
 }
 
 // ── WalletWallet helpers ──────────────────────────────────────────────────────
@@ -538,15 +558,27 @@ export default async function handler(req, res) {
     // Send approval email only when transitioning INTO approved
     let emailResult = null;
     if (status === 'approved' && before && before.status !== 'approved' && before.contact_email) {
+      const signupUrl = `${SITE_URL}/signup.html?cafe=${before.slug}`;
+      const staffUrl  = `${SITE_URL}/staff.html?cafe=${before.slug}`;
+
+      // Generate a QR code PNG of the signup link to attach
+      const qrBase64 = await fetchQrBase64(signupUrl, 600);
+      const attachments = qrBase64 ? [{
+        filename: `${before.slug}-signup-qr.png`,
+        content: qrBase64,
+      }] : undefined;
+
       emailResult = await sendEmail({
         to: before.contact_email,
         subject: `Your cafe "${before.cafe_name}" is approved on LuckyCup`,
         html: approvalEmailHtml({
           cafeName:  before.cafe_name,
           slug:      before.slug,
-          signupUrl: `${SITE_URL}/signup.html?cafe=${before.slug}`,
-          staffUrl:  `${SITE_URL}/staff.html?cafe=${before.slug}`,
+          signupUrl,
+          staffUrl,
+          hasQr:     !!qrBase64,
         }),
+        attachments,
       });
     }
 
