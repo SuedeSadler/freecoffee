@@ -246,6 +246,8 @@ footer {
   .container, .nav-inner, .footer-inner { padding: 0 20px; }
   section { padding: 56px 0; }
   .nav-links { display: none; }
+  #demo .container { padding: 0 16px; }
+  #demo .card-inner { padding: 20px; }
 }
 </style>
 </head>
@@ -278,7 +280,7 @@ footer {
         <div class="trust-row">
           <div class="trust-item"><div class="trust-check">✓</div>Free setup</div>
           <div class="trust-item"><div class="trust-check">✓</div>No app to download</div>
-          <div class="trust-item"><div class="trust-check">✓</div>Works on any iPhone</div>
+          <div class="trust-item"><div class="trust-check">✓</div>Works on iPhone and Android</div>
         </div>
       </div>
 
@@ -392,7 +394,7 @@ footer {
           <div class="step-spine"><div class="step-num">2</div><div class="step-line"></div></div>
           <div class="step-body">
             <h3>Share your signup link</h3>
-            <p>Print the QR code for your counter, or share the link on Instagram. Customers tap once to get their branded card in Apple Wallet.</p>
+            <p>Print the QR code for your counter, or share the link on Instagram. Customers tap once to get their branded card saved to their phone.</p>
             <div class="url-pill">freecoffee.app/signup?cafe=<span>lucky-cafe</span></div>
           </div>
         </div>
@@ -459,19 +461,17 @@ footer {
 <!-- DEMO -->
 <section id="demo">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center">
+    <div style="max-width:480px;margin:0 auto;text-align:center;width:100%">
 
-      <div>
-        <div class="tag">📲 Try it now</div>
-        <h2 style="margin-bottom:14px">Get a real card<br>on your phone</h2>
-        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:0">
-          Sign up as a demo customer and add a real loyalty card to your Apple Wallet right now. No app, no account — just enter your name and tap the link.
-        </p>
-      </div>
+      <div class="tag">📲 Try it now</div>
+      <h2 style="margin-bottom:14px">Get a real card on your phone</h2>
+      <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:36px">
+        Sign up as a demo customer and add a real loyalty card to your wallet right now. No app, no account — just enter your name and tap the link.
+      </p>
 
-      <!-- Demo form card -->
+      <!-- Demo form -->
       <div id="demoFormWrap">
-        <div style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+        <div class="card-inner" style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:left">
 
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:18px;border-bottom:.5px solid var(--border)">
             <div style="width:36px;height:36px;background:var(--accent-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">☕</div>
@@ -502,36 +502,29 @@ footer {
             Get My Demo Card →
           </button>
 
-          <div style="margin-top:16px;text-align:center;font-size:11px;color:var(--muted2)">
-            iPhone only · Adds to Apple Wallet
+          <div style="margin-top:14px;text-align:center;font-size:11px;color:var(--muted2)">
+            Works on iPhone and Android
           </div>
         </div>
       </div>
 
-      <!-- Success state (hidden until signup) -->
+      <!-- Success state -->
       <div id="demoSuccessWrap" style="display:none">
-        <div style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
-          <div style="font-size:52px;margin-bottom:12px">☕</div>
-          <div style="font-size:17px;font-weight:700;margin-bottom:8px">You're in!</div>
+        <div class="card-inner" style="background:var(--surface);border:.5px solid var(--border-mid);border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+          <div style="font-size:52px;margin-bottom:14px">☕</div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:8px">You're in!</div>
           <div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:24px">
-            Tap the button to add your card to Apple Wallet. Then come back and try adding stamps via the staff terminal.
+            Tap the button below to save your loyalty card. Works with Apple Wallet and Google Wallet.
           </div>
 
-          <!-- Wallet button -->
-          <a id="demoWalletLink" href="#"
-            style="display:block;background:var(--accent);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:6px;text-decoration:none;margin-bottom:12px;transition:opacity .2s">
-            Add to Apple Wallet
+          <a id="demoWalletLink" href="#" target="_blank"
+            style="display:block;background:var(--accent);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:6px;text-decoration:none;margin-bottom:16px;transition:opacity .2s">
+            Save to Wallet →
           </a>
 
-          <!-- QR for scanning on desktop -->
-          <div id="demoQrWrap" style="margin-top:20px;padding-top:20px;border-top:.5px solid var(--border)">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;letter-spacing:.5px">Or scan with your iPhone camera</div>
-            <canvas id="demoQrCanvas" style="border-radius:8px;max-width:140px"></canvas>
-          </div>
-
           <button onclick="document.getElementById('demoFormWrap').style.display='';document.getElementById('demoSuccessWrap').style.display='none'"
-            style="margin-top:16px;background:none;border:none;font-family:var(--font);font-size:11px;color:var(--muted2);cursor:pointer;text-decoration:underline">
-            Sign up another
+            style="background:none;border:none;font-family:var(--font);font-size:11px;color:var(--muted2);cursor:pointer;text-decoration:underline">
+            Try another name
           </button>
         </div>
       </div>
@@ -565,17 +558,21 @@ footer {
   </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script src="/config.js"></script>
 <script>
 async function demoSignup() {
   const name  = document.getElementById('demoName').value.trim();
   const email = document.getElementById('demoEmail').value.trim();
-  const err   = document.getElementById('demoErr');
+  const errEl = document.getElementById('demoErr');
   const btn   = document.getElementById('demoBtn');
 
-  err.style.display = 'none';
-  if (!name) { err.textContent = 'Please enter your name.'; err.style.display = ''; return; }
+  errEl.style.display = 'none';
+  if (!name) {
+    errEl.textContent = 'Please enter your name.';
+    errEl.style.display = '';
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Creating your card...';
@@ -587,43 +584,20 @@ async function demoSignup() {
       body: JSON.stringify({ action: 'demo-signup', name, email }),
     });
     const data = await res.json();
+
     if (!data.ok) {
-      err.textContent = data.error || 'Something went wrong — try again.';
-      err.style.display = '';
+      errEl.textContent = data.error || 'Something went wrong — try again.';
+      errEl.style.display = '';
       return;
     }
 
-    // Show success
     document.getElementById('demoFormWrap').style.display    = 'none';
     document.getElementById('demoSuccessWrap').style.display = '';
-    document.getElementById('demoWalletLink').href = data.passUrl;
-
-    // Render QR code pointing to the pass URL
-    const canvas = document.getElementById('demoQrCanvas');
-    canvas.width  = 140;
-    canvas.height = 140;
-    const tmp = document.createElement('div');
-    document.body.appendChild(tmp);
-    new QRCode(tmp, {
-      text:         data.passUrl,
-      width:        140,
-      height:       140,
-      colorDark:    '#1a1a1a',
-      colorLight:   '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M,
-    });
-    setTimeout(() => {
-      const src = tmp.querySelector('canvas');
-      if (src) {
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(src, 0, 0, 140, 140);
-      }
-      document.body.removeChild(tmp);
-    }, 100);
+    document.getElementById('demoWalletLink').href           = data.passUrl;
 
   } catch (e) {
-    err.textContent = 'Network error — please try again.';
-    err.style.display = '';
+    errEl.textContent = 'Network error — please try again.';
+    errEl.style.display = '';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Get My Demo Card →';
