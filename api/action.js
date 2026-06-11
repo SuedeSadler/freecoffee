@@ -355,11 +355,11 @@ export default async function handler(req, res) {
   const { action, slug } = body;
   const supa = db();
 
-  // ── create-cafe ───────────────────────────────────────────────────────────
+  // ── create-cafe (now creates a PENDING request, no master key needed) ──────
   if (action === 'create-cafe') {
-    const { masterKey, cafeName, cafeSlug, accent, stamp, mode, pin } = body;
-    if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
+    const { cafeName, cafeSlug, accent, stamp, mode, pin, contactEmail } = body;
     if (!cafeName || !cafeSlug || !pin) return err(res, 'Missing fields', 400);
+    if (!contactEmail) return err(res, 'Contact email required', 400);
     if (!/^[a-z0-9-]+$/.test(cafeSlug)) return err(res, 'Slug: lowercase, numbers and hyphens only', 400);
 
     const pinHash = await hashPin(pin);
@@ -367,16 +367,78 @@ export default async function handler(req, res) {
       slug: cafeSlug, cafe_name: cafeName,
       accent: accent || '#c94f2b', stamp: stamp || '\u2615',
       mode: mode || 'dark', pin_hash: pinHash,
+      status: 'pending', contact_email: contactEmail,
     });
     if (error) {
       if (error.code === '23505') return err(res, 'A cafe with that slug already exists', 409);
       return err(res, error.message, 500);
     }
     return ok(res, {
-      message:   'Cafe created',
+      message: 'Request submitted — pending approval',
+      pending: true,
       signupUrl: `${SITE_URL}/signup.html?cafe=${cafeSlug}`,
       staffUrl:  `${SITE_URL}/staff.html?cafe=${cafeSlug}`,
     });
+  }
+
+  // ── ADMIN: list cafes with stats ────────────────────────────────────────────
+  if (action === 'admin-list-cafes') {
+    const { masterKey } = body;
+    if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
+
+    const { data: cafes, error: cErr } = await supa
+      .from('cafe_settings')
+      .select('cafe_id, slug, cafe_name, accent, stamp, status, contact_email, logo_url, created_at')
+      .order('created_at', { ascending: false });
+    if (cErr) return err(res, cErr.message, 500);
+
+    // Member counts per cafe
+    const { data: customers } = await supa
+      .from('customers').select('cafe_id, stamps');
+
+    // Event counts per cafe
+    const { data: events } = await supa
+      .from('events').select('cafe_id, type');
+
+    const stats = {};
+    for (const cafe of cafes) {
+      stats[cafe.cafe_id] = { members: 0, activeStamps: 0, totalStamps: 0, redemptions: 0, signups: 0 };
+    }
+    for (const cust of (customers || [])) {
+      if (stats[cust.cafe_id]) {
+        stats[cust.cafe_id].members += 1;
+        stats[cust.cafe_id].activeStamps += (cust.stamps || 0);
+      }
+    }
+    for (const ev of (events || [])) {
+      const s = stats[ev.cafe_id];
+      if (!s) continue;
+      if (ev.type === 'stamp')  s.totalStamps += 1;
+      if (ev.type === 'redeem') s.redemptions += 1;
+      if (ev.type === 'signup') s.signups += 1;
+    }
+
+    return ok(res, {
+      cafes: cafes.map(cafe => ({ ...cafe, stats: stats[cafe.cafe_id] })),
+    });
+  }
+
+  // ── ADMIN: approve / reject cafe ───────────────────────────────────────────
+  if (action === 'admin-set-status') {
+    const { masterKey, cafeSlug, status } = body;
+    if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
+    if (!cafeSlug || !['approved', 'rejected', 'pending'].includes(status))
+      return err(res, 'cafeSlug and valid status required', 400);
+
+    const { data, error } = await supa
+      .from('cafe_settings')
+      .update({ status })
+      .eq('slug', cafeSlug)
+      .select('slug, status');
+    if (error) return err(res, error.message, 500);
+    if (!data || !data.length) return err(res, 'Cafe not found', 404);
+
+    return ok(res, { slug: cafeSlug, status });
   }
 
   // ── upload-logo ───────────────────────────────────────────────────────────
@@ -391,10 +453,19 @@ export default async function handler(req, res) {
   }
 
   if (action === 'upload-logo') {
-    const { masterKey, imageBase64, mimeType } = body;
-    if (masterKey !== MASTER_KEY) return err(res, 'Unauthorised', 403);
+    const { pin, masterKey, imageBase64, mimeType } = body;
     if (!slug)          return err(res, 'slug required', 400);
     if (!imageBase64)   return err(res, 'imageBase64 required', 400);
+
+    // Authorise via cafe PIN (owner) or master key (admin)
+    if (masterKey !== MASTER_KEY) {
+      if (!pin) return err(res, 'Unauthorised', 403);
+      const { data: authCafe } = await supa
+        .from('cafe_settings').select('pin_hash').eq('slug', slug).single();
+      if (!authCafe) return err(res, 'Cafe not found', 404);
+      const pinOk = await checkPin(pin, authCafe.pin_hash);
+      if (!pinOk) return err(res, 'Unauthorised', 403);
+    }
 
     const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
     const mime    = mimeType || 'image/png';
@@ -449,9 +520,11 @@ export default async function handler(req, res) {
     if (!slug) return err(res, 'slug required', 400);
     const { data, error } = await supa
       .from('cafe_settings')
-      .select('cafe_name, accent, stamp, mode, slug, logo_url')
+      .select('cafe_name, accent, stamp, mode, slug, logo_url, status')
       .eq('slug', slug).single();
     if (error || !data) return err(res, 'Cafe not found', 404);
+    if (data.status !== 'approved') return err(res, 'This cafe is awaiting approval', 403);
+    delete data.status;
     return ok(res, { settings: data });
   }
 
@@ -463,6 +536,7 @@ export default async function handler(req, res) {
     const { data: cafe, error: cafeErr } = await supa
       .from('cafe_settings').select('*').eq('slug', slug).single();
     if (cafeErr || !cafe) return err(res, 'Cafe not found', 404);
+    if (cafe.status !== 'approved') return err(res, 'This cafe is awaiting approval', 403);
 
     if (email) {
       const { data: existing } = await supa.from('customers').select('customer_id')
@@ -497,6 +571,8 @@ export default async function handler(req, res) {
       mode:          cafe.mode,
     });
     if (insertErr) return err(res, insertErr.message, 500);
+
+    await supa.from('events').insert({ cafe_id: cafe.cafe_id, customer_id: custId, type: 'signup' });
 
     return ok(res, { passUrl, custId });
   }
@@ -547,6 +623,8 @@ export default async function handler(req, res) {
       .update({ stamps: newStamps, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
 
+    await supa.from('events').insert({ cafe_id: cafe.cafe_id, customer_id: custId, type: 'stamp' });
+
     return ok(res, { stamps: newStamps, full: newStamps >= STAMPS_NEEDED });
   }
 
@@ -580,6 +658,8 @@ export default async function handler(req, res) {
     await supa.from('customers')
       .update({ stamps: 0, redeemed: true, version, updated_at: new Date().toISOString() })
       .eq('customer_id', custId);
+
+    await supa.from('events').insert({ cafe_id: cafe.cafe_id, customer_id: custId, type: 'redeem' });
 
     return ok(res, { redeemed: true, stamps: 0 });
   }

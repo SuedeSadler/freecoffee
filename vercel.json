@@ -1,8 +1,14 @@
 {
+  "functions": {
+    "api/action.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/setup", "destination": "/setup.html" },
-    { "source": "/signup", "destination": "/signup.html" },
-    { "source": "/staff", "destination": "/staff.html" }
+    { "source": "/setup",   "destination": "/setup.html" },
+    { "source": "/signup",  "destination": "/signup.html" },
+    { "source": "/staff",   "destination": "/staff.html" },
+    { "source": "/admin",   "destination": "/admin.html" }
   ]
 }

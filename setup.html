@@ -487,9 +487,9 @@
     </div>
   </div>
 
-  <!-- ── STEP 5: PIN + master key ──────────────────────────────── -->
+  <!-- ── STEP 5: PIN + contact ──────────────────────────────── -->
   <div class="card" id="step4" style="display:none">
-    <h2>Staff PIN &amp; Auth</h2>
+    <h2>Staff PIN &amp; Contact</h2>
     <p style="font-size:12px;color:var(--muted);margin-bottom:20px">
       Your staff will enter this PIN to stamp cards. Keep it secret — it cannot be recovered, only reset by running setup again.
     </p>
@@ -506,22 +506,22 @@
     </div>
 
     <hr class="sep">
-    <label>Master Key (from your Vercel env vars)</label>
-    <input type="password" id="masterKey" placeholder="Your MASTER_KEY value">
+    <label>Contact Email</label>
+    <input type="email" id="contactEmail" placeholder="you@yourcafe.com">
     <p style="font-size:11px;color:var(--muted);margin-top:-10px;margin-bottom:16px">
-      This is not stored — it just authorises cafe creation.
+      We'll use this to let you know when your cafe is approved.
     </p>
 
     <div class="nav-row">
       <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
-      <button class="btn" id="createBtn" onclick="createCafe()">Create Cafe →</button>
+      <button class="btn" id="createBtn" onclick="createCafe()">Submit Request →</button>
     </div>
   </div>
 
   <!-- ── SUCCESS ─────────────────────────────────────────────── -->
   <div class="success-box" id="successBox" style="display:none">
-    <div class="success-title">Cafe created</div>
-    <div class="success-sub">Print the QR code and put it on your counter — customers scan it to get their loyalty card.</div>
+    <div class="success-title">Request submitted ✓</div>
+    <div class="success-sub">Your cafe is pending approval — we'll email you when it's live. Save the links and QR code below; they'll start working the moment you're approved.</div>
 
     <!-- QR code -->
     <div style="text-align:center;margin-bottom:20px">
@@ -630,7 +630,7 @@ const STAMPS  = ['☕','🫖','🍵','🧋','🍩','🥐','🌟','🎯','🔥','
 
 const state = {
   mode: 'dark', cafeName: '', slug: '', accent: PRESETS[0],
-  stamp: '☕', pin: '', masterKey: '',
+  stamp: '☕', pin: '',
 };
 
 let currentStep = 0;
@@ -791,12 +791,12 @@ function handleDrop(e) {
 async function createCafe() {
   const pin = document.getElementById('staffPin').value;
   const pinConfirm = document.getElementById('staffPinConfirm').value;
-  const masterKey = document.getElementById('masterKey').value.trim();
+  const contactEmail = document.getElementById('contactEmail').value.trim();
 
   if (pin.length < 4) return showErr('PIN must be at least 4 digits.');
   if (!/^\d+$/.test(pin)) return showErr('PIN must be digits only.');
   if (pin !== pinConfirm) return showErr('PINs do not match.');
-  if (!masterKey) return showErr('Master key is required.');
+  if (!contactEmail || !contactEmail.includes('@')) return showErr('A valid contact email is required.');
 
   const btn = document.getElementById('createBtn');
   btn.disabled = true;
@@ -809,7 +809,7 @@ async function createCafe() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'create-cafe',
-        masterKey,
+        contactEmail,
         cafeName: state.cafeName,
         cafeSlug: state.slug,
         accent: state.accent,
@@ -830,7 +830,7 @@ async function createCafe() {
         body: JSON.stringify({
           action: 'upload-logo',
           slug: state.slug,
-          masterKey,
+          pin,
           imageBase64: logoBase64,
           mimeType: logoFile.type,
         }),
@@ -855,7 +855,7 @@ async function createCafe() {
     showErr('Network error — try again.');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Create Cafe →';
+    btn.textContent = 'Submit Request →';
   }
 }
 
