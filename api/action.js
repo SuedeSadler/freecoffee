@@ -39,6 +39,8 @@ const WALLETWALLET_KEY = process.env.WALLETWALLET_KEY;
 const MASTER_KEY       = process.env.MASTER_KEY;
 const STAMPS_NEEDED    = parseInt(process.env.STAMPS_NEEDED || '10', 10);
 const SITE_URL         = (process.env.SITE_URL || '').replace(/\/$/, '');
+const RESEND_KEY       = process.env.RESEND_KEY;
+const EMAIL_FROM       = process.env.EMAIL_FROM || 'LuckyCup <onboarding@resend.dev>';
 
 const db = () => createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -236,6 +238,68 @@ function makeLogoDataUri(accentHex) {
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
+// ── Email (Resend) ────────────────────────────────────────────────────────────
+async function sendEmail({ to, subject, html }) {
+  if (!RESEND_KEY) {
+    console.log('[email] RESEND_KEY not set — skipping email to', to);
+    return { skipped: true };
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      console.log('[email] send failed:', res.status, text);
+      return { error: text };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.log('[email] error:', e.message);
+    return { error: e.message };
+  }
+}
+
+function approvalEmailHtml({ cafeName, slug, signupUrl, staffUrl }) {
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
+    <div style="font-size:22px;font-weight:700;margin-bottom:4px">Lucky<span style="color:#c94f2b">Cup</span></div>
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:28px">Your cafe is approved</div>
+
+    <div style="background:#f7f4f0;border-radius:12px;padding:28px;border:1px solid #eee">
+      <div style="font-size:18px;font-weight:600;margin-bottom:8px">You're live, ${escapeHtml(cafeName)}! \u2615</div>
+      <p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 24px">
+        Your LuckyCup loyalty card is now active. Share your signup link with customers and use the staff terminal to add stamps.
+      </p>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#888;margin-bottom:5px">Customer signup</div>
+        <a href="${signupUrl}" style="color:#c94f2b;font-size:13px;word-break:break-all">${signupUrl}</a>
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#888;margin-bottom:5px">Staff terminal</div>
+        <a href="${staffUrl}" style="color:#c94f2b;font-size:13px;word-break:break-all">${staffUrl}</a>
+      </div>
+    </div>
+
+    <p style="font-size:12px;color:#999;line-height:1.6;margin-top:24px">
+      Tip: print a QR code of your signup link and put it on your counter so customers can join in one tap.
+    </p>
+    <p style="font-size:11px;color:#bbb;margin-top:20px">LuckyCup \u2014 digital loyalty cards for independent cafes</p>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[m]);
+}
+
 // ── WalletWallet helpers ──────────────────────────────────────────────────────
 const WW_BASE = 'https://api.walletwallet.dev';
 const WW_AUTH = () => ({
@@ -373,6 +437,33 @@ export default async function handler(req, res) {
       if (error.code === '23505') return err(res, 'A cafe with that slug already exists', 409);
       return err(res, error.message, 500);
     }
+
+    // Notify the admin that a new request is waiting
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    if (ADMIN_EMAIL) {
+      await sendEmail({
+        to: ADMIN_EMAIL,
+        subject: `New cafe request: ${cafeName}`,
+        html: `<div style="font-family:sans-serif;padding:20px">
+          <p style="font-size:15px"><strong>${escapeHtml(cafeName)}</strong> (${escapeHtml(cafeSlug)}) just requested access.</p>
+          <p style="font-size:13px;color:#555">Contact: ${escapeHtml(contactEmail)}</p>
+          <p style="font-size:13px"><a href="${SITE_URL}/admin.html" style="color:#c94f2b">Review in the admin dashboard \u2192</a></p>
+        </div>`,
+      });
+    }
+
+    // Confirm receipt to the applicant
+    await sendEmail({
+      to: contactEmail,
+      subject: `We received your LuckyCup request for "${cafeName}"`,
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:28px 24px;color:#1a1a1a">
+        <div style="font-size:20px;font-weight:700;margin-bottom:18px">Lucky<span style="color:#c94f2b">Cup</span></div>
+        <p style="font-size:15px;font-weight:600;margin-bottom:8px">Thanks \u2014 we've got your request.</p>
+        <p style="font-size:14px;color:#555;line-height:1.6">Your cafe <strong>${escapeHtml(cafeName)}</strong> is pending review. We'll email you the moment it's approved \u2014 usually within a day. Your signup and staff links will start working as soon as you're live.</p>
+        <p style="font-size:11px;color:#bbb;margin-top:24px">LuckyCup \u2014 digital loyalty cards for independent cafes</p>
+      </div>`,
+    });
+
     return ok(res, {
       message: 'Request submitted — pending approval',
       pending: true,
@@ -430,6 +521,12 @@ export default async function handler(req, res) {
     if (!cafeSlug || !['approved', 'rejected', 'pending'].includes(status))
       return err(res, 'cafeSlug and valid status required', 400);
 
+    // Load current state so we only email on a real transition to approved
+    const { data: before } = await supa
+      .from('cafe_settings')
+      .select('status, cafe_name, contact_email, slug')
+      .eq('slug', cafeSlug).single();
+
     const { data, error } = await supa
       .from('cafe_settings')
       .update({ status })
@@ -438,7 +535,22 @@ export default async function handler(req, res) {
     if (error) return err(res, error.message, 500);
     if (!data || !data.length) return err(res, 'Cafe not found', 404);
 
-    return ok(res, { slug: cafeSlug, status });
+    // Send approval email only when transitioning INTO approved
+    let emailResult = null;
+    if (status === 'approved' && before && before.status !== 'approved' && before.contact_email) {
+      emailResult = await sendEmail({
+        to: before.contact_email,
+        subject: `Your cafe "${before.cafe_name}" is approved on LuckyCup`,
+        html: approvalEmailHtml({
+          cafeName:  before.cafe_name,
+          slug:      before.slug,
+          signupUrl: `${SITE_URL}/signup.html?cafe=${before.slug}`,
+          staffUrl:  `${SITE_URL}/staff.html?cafe=${before.slug}`,
+        }),
+      });
+    }
+
+    return ok(res, { slug: cafeSlug, status, email: emailResult });
   }
 
   // ── upload-logo ───────────────────────────────────────────────────────────
